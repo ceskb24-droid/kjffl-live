@@ -169,7 +169,7 @@ nav button.on{color:#fff;background:var(--pan2, var(--panel2))}
       <button class="rolebtn cesko" id="roleCesko"><div class="rt">Cesko, scorekeeper</div><div class="rd">At the draft. Logs every pick. The only device that writes to the board.</div></button>
       <button class="rolebtn ant" id="roleAnt"><div class="rt">Anthony, slot 8</div><div class="rd">Watching from anywhere, no account needed. Board refreshes live. Text Cesko your picks.</div></button>
       <div class="joinrow" id="joinRow" style="display:none"><input id="joinInput"><button id="joinBtn">Join</button></div>
-      <div class="finenote">The board syncs through a private room link. Anyone who has the link can view it, so keep it between the two of you.</div>
+      <div class="finenote">Anthony's link is view only and opens straight to the feed. The scorekeeper link carries the sync key, keep that one to yourself.</div>
     </div>
   </section>
 
@@ -307,10 +307,10 @@ function refreshSha(){
 }
 function pushState(){
   if(ROLE!=='cesko')return;
-  if(!TOKEN){setSync('<span class="bad">No token, local only</span>');return;}
   STATE.ts=Date.now();dirty=true;
-  setSync('<span class="warn">Saving</span>');
   try{localStorage.setItem('kjffl_state_bk',JSON.stringify(STATE));}catch(e){}
+  if(!TOKEN){setSync('<span class="bad">No sync key, local only</span>');return;}
+  setSync('<span class="warn">Saving</span>');
   var body={message:'board update, '+STATE.picks.length+' picks',content:b64(JSON.stringify(STATE)),branch:GH_BRANCH};
   if(SHA)body.sha=SHA;
   fetch(API,{method:'PUT',headers:{'Authorization':'Bearer '+TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify(body)})
@@ -401,15 +401,22 @@ function showShare(force){
   var box=$('shareBox');
   if(!TOKEN){if(force)showToken();else box.innerHTML='';return;}
   if(!force){box.innerHTML='';return;}
-  var link=location.origin+location.pathname;
+  var link=location.origin+location.pathname+'?w=1';
+  var mylink=location.origin+location.pathname+'?s=4#k='+TOKEN;
   box.innerHTML='<div class="sharecard"><div class="st">Anthony\u2019s link, text it to him</div>'+
     '<div class="sharerow"><input id="shareUrl" readonly value="'+link+'"><button id="copyBtn">Copy</button></div>'+
-    '<div class="sd">Opens in any browser, no account. He taps Anthony and the board follows live. <span id="hideShare" style="color:var(--gold);font-weight:800">Hide</span></div></div>';
-  $('copyBtn').addEventListener('click',function(){
-    var inp=$('shareUrl');inp.select();inp.setSelectionRange(0,999);
-    try{navigator.clipboard.writeText(inp.value).then(function(){toast('Link copied');});}
-    catch(e){try{document.execCommand('copy');toast('Link copied');}catch(e2){toast('Press and hold to copy');}}
-  });
+    '<div class="sd">View only. Opens straight into the live feed, no account, no key.</div>'+
+    '<div class="st" style="margin-top:12px">Your private scorekeeper link</div>'+
+    '<div class="sharerow"><input id="myUrl" readonly value="'+mylink+'"><button id="copyBtn2">Copy</button></div>'+
+    '<div class="sd">Carries your sync key after the #, which never leaves this phone. Save it in Notes, always open the board from it, never text this one. <span id="hideShare" style="color:var(--gold);font-weight:800">Hide</span></div></div>';
+  function wireCopy(btn,inp){
+    $(btn).addEventListener('click',function(){
+      var el=$(inp);el.select();el.setSelectionRange(0,999);
+      try{navigator.clipboard.writeText(el.value).then(function(){toast('Copied');});}
+      catch(e){try{document.execCommand('copy');toast('Copied');}catch(e2){toast('Press and hold to copy');}}
+    });
+  }
+  wireCopy('copyBtn','shareUrl');wireCopy('copyBtn2','myUrl');
   $('hideShare').addEventListener('click',function(){box.innerHTML='';});
 }
 
@@ -594,9 +601,7 @@ function collectSetup(){
 }
 
 /* ---------- boot + wiring ---------- */
-loadToken();
-
-$('roleCesko').addEventListener('click',function(){
+function enterCesko(){
   ROLE='cesko';
   $('hdrStatus').textContent='Scorekeeper \u00b7 every tap logs to the team on the clock';
   pullState().then(function(d){
@@ -604,15 +609,19 @@ $('roleCesko').addEventListener('click',function(){
     else{try{var bk=localStorage.getItem('kjffl_state_bk');if(bk){var b=JSON.parse(bk);if(b&&b.started){STATE=b;rebuildTaken();$('resumeBtn').style.display='block';}}}catch(e){}}
     buildSetup();setView('setup');
   });
-});
-$('roleAnt').addEventListener('click',function(){
+}
+function enterWatch(){
   ROLE='ant';
   $('hdrStatus').textContent='Watching live \u00b7 text Cesko your picks';
   setView('watch');startPoll();
-});
-$('joinBtn').addEventListener('click',function(){
-  ROLE='ant';setView('watch');startPoll();
-});
+}
+var HK=(location.hash.match(/k=([A-Za-z0-9_]+)/)||[])[1]||null;
+if(HK)saveTokenVal(HK);else loadToken();
+$('roleCesko').addEventListener('click',enterCesko);
+$('roleAnt').addEventListener('click',enterWatch);
+$('joinBtn').addEventListener('click',enterWatch);
+if(new URLSearchParams(location.search).get('w'))enterWatch();
+else if(HK)enterCesko();
 $('startBtn').addEventListener('click',function(){
   if(!collectSetup())return;
   STATE.started=true;
