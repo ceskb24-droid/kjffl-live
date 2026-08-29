@@ -294,10 +294,11 @@ function antPicks(){var out=[],r;for(r=1;r<=ROUNDS;r++){out.push(r%2===1?(r-1)*T
 function toast(msg){var t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('show');},2400);}
 function setSync(html){$('syncBox').innerHTML=html;}
 
-/* ---------- sync through the repo ---------- */
+/* ---------- sync through the repo, v5 engine ---------- */
 function b64(s){return btoa(unescape(encodeURIComponent(s)));}
 function loadToken(){try{TOKEN=localStorage.getItem('kjffl_gh_token')||null;}catch(e){}}
 function saveTokenVal(t){TOKEN=t;try{localStorage.setItem('kjffl_gh_token',t);}catch(e){}}
+var pushing=false,queued=false,backoff=0,nextAllowed=0;
 function refreshSha(){
   if(!TOKEN)return Promise.resolve();
   return fetch(API+'?ref='+GH_BRANCH,{headers:{'Authorization':'Bearer '+TOKEN,'Accept':'application/vnd.github+json'}})
@@ -305,29 +306,46 @@ function refreshSha(){
     .then(function(j){if(j&&j.sha)SHA=j.sha;})
     .catch(function(){});
 }
-function pushState(){
-  if(ROLE!=='cesko')return;
-  STATE.ts=Date.now();dirty=true;
-  try{localStorage.setItem('kjffl_state_bk',JSON.stringify(STATE));}catch(e){}
+function schedulePush(){queued=true;pumpPush();}
+function pumpPush(){
+  if(pushing||!queued||ROLE!=='cesko')return;
   if(!TOKEN){setSync('<span class="bad">No sync key, local only</span>');return;}
+  var now=Date.now();
+  if(now<nextAllowed){setTimeout(pumpPush,nextAllowed-now+80);return;}
+  pushing=true;queued=false;
   setSync('<span class="warn">Saving</span>');
   var body={message:'board update, '+STATE.picks.length+' picks',content:b64(JSON.stringify(STATE)),branch:GH_BRANCH};
   if(SHA)body.sha=SHA;
   fetch(API,{method:'PUT',headers:{'Authorization':'Bearer '+TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(function(res){
-      if(res.status===409||res.status===422){refreshSha();throw new Error('sha');}
-      if(!res.ok)throw new Error('bad');
-      return res.json();
+      if(res.status===401){setSync('<span class="bad">Sync key rejected</span>');backoff=60000;queued=true;throw 0;}
+      if(res.status===403||res.status===429){
+        var ra=parseInt(res.headers.get('retry-after')||'0',10)*1000;
+        backoff=Math.max(ra,backoff?Math.min(backoff*2,120000):20000);
+        setSync('<span class="warn">Cooling down, picks safe on this phone</span>');
+        queued=true;throw 0;
+      }
+      if(res.status===409||res.status===422){
+        backoff=1500;queued=true;
+        return refreshSha().then(function(){throw 0;});
+      }
+      if(!res.ok){backoff=8000;queued=true;throw 0;}
+      return res.json().then(function(j){
+        if(j&&j.content&&j.content.sha)SHA=j.content.sha;
+        dirty=false;backoff=0;
+        nextAllowed=Date.now()+3000;
+        setSync('<span class="ok">Synced '+new Date().toLocaleTimeString().replace(/:\d\d($| )/,'$1')+'</span>');
+      });
     })
-    .then(function(j){
-      if(j&&j.content&&j.content.sha)SHA=j.content.sha;
-      dirty=false;
-      setSync('<span class="ok">Synced '+new Date().toLocaleTimeString().replace(/:\d\d($| )/,'$1')+'</span>');
-    })
-    .catch(function(){setSync('<span class="bad">Retrying sync</span>');});
+    .catch(function(){nextAllowed=Date.now()+(backoff||8000);})
+    .then(function(){pushing=false;if(queued)setTimeout(pumpPush,150);});
 }
-function save(){clearTimeout(saveTimer);saveTimer=setTimeout(pushState,350);}
-setInterval(function(){if(ROLE==='cesko'&&dirty&&TOKEN)pushState();},9000);
+function save(){
+  STATE.ts=Date.now();dirty=true;
+  try{localStorage.setItem('kjffl_state_bk',JSON.stringify(STATE));}catch(e){}
+  clearTimeout(saveTimer);saveTimer=setTimeout(schedulePush,300);
+}
+setInterval(function(){if(ROLE==='cesko'&&(dirty||queued))pumpPush();},5000);
 function pullState(){
   return fetch(RAW+'?t='+Date.now(),{cache:'no-store'})
     .then(function(res){if(!res.ok)throw new Error('bad');return res.json();})
@@ -357,7 +375,7 @@ function showToken(){
     var v=$('tokInput').value.trim();
     if(!v){toast('Paste the token first');return;}
     saveTokenVal(v);
-    refreshSha().then(function(){pushState();showShare(true);toast('Sync is on');});
+    refreshSha().then(function(){dirty=true;schedulePush();showShare(true);toast('Sync is on');});
   });
 }
 /* ---------- views ---------- */
@@ -605,8 +623,11 @@ function enterCesko(){
   ROLE='cesko';
   $('hdrStatus').textContent='Scorekeeper \u00b7 every tap logs to the team on the clock';
   pullState().then(function(d){
-    if(d&&d.started){STATE=d;rebuildTaken();$('resumeBtn').style.display='block';}
-    else{try{var bk=localStorage.getItem('kjffl_state_bk');if(bk){var b=JSON.parse(bk);if(b&&b.started){STATE=b;rebuildTaken();$('resumeBtn').style.display='block';}}}catch(e){}}
+    var bk=null;try{var s=localStorage.getItem('kjffl_state_bk');if(s)bk=JSON.parse(s);}catch(e){}
+    var best=null;
+    if(d&&d.started)best=d;
+    if(bk&&bk.started&&(!best||(bk.ts||0)>(best.ts||0)))best=bk;
+    if(best){STATE=best;rebuildTaken();$('resumeBtn').style.display='block';}
     buildSetup();setView('setup');
   });
 }
@@ -626,7 +647,7 @@ $('startBtn').addEventListener('click',function(){
   if(!collectSetup())return;
   STATE.started=true;
   setView('score');
-  if(TOKEN){refreshSha().then(function(){pushState();});showShare(true);}
+  if(TOKEN){dirty=true;refreshSha().then(function(){schedulePush();});showShare(true);}
   else showToken();
   toast('Board open. Log every pick as it happens.');
 });
@@ -634,13 +655,13 @@ $('resumeBtn').addEventListener('click',function(){
   pullState().then(function(d){
     if(d&&d.ts&&(!STATE.ts||d.ts>=STATE.ts)){STATE=d;rebuildTaken();}
     setView('score');
-    if(TOKEN){refreshSha();showShare(false);}else showToken();
+    if(TOKEN){dirty=true;refreshSha().then(function(){schedulePush();});showShare(false);}else showToken();
     toast('Resumed at pick '+(STATE.picks.length+1));
   });
 });
 $('syncBox').addEventListener('click',function(){
   if(ROLE==='cesko'){
-    if(!TOKEN)showToken();else{refreshSha().then(function(){pushState();});}
+    if(!TOKEN)showToken();else{dirty=true;refreshSha().then(function(){schedulePush();});}
   }
 });
 $('undoBtn').addEventListener('click',undo);
