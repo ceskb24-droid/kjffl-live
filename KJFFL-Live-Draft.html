@@ -624,10 +624,10 @@ function enterCesko(){
   $('hdrStatus').textContent='Scorekeeper \u00b7 every tap logs to the team on the clock';
   pullState().then(function(d){
     var bk=null;try{var s=localStorage.getItem('kjffl_state_bk');if(s)bk=JSON.parse(s);}catch(e){}
-    var best=null;
-    if(d&&d.started)best=d;
-    if(bk&&bk.started&&(!best||(bk.ts||0)>(best.ts||0)))best=bk;
-    if(best){STATE=best;rebuildTaken();$('resumeBtn').style.display='block';}
+    var best=d||null;
+    if(bk&&(!best||(bk.ts||0)>(best.ts||0)))best=bk;
+    if(best&&best.started){STATE=best;rebuildTaken();$('resumeBtn').style.display='block';}
+    else if(best){STATE.me=best.me||STATE.me;STATE.ant=best.ant||STATE.ant;}
     buildSetup();setView('setup');
   });
 }
