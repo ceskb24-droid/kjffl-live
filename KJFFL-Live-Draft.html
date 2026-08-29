@@ -168,7 +168,7 @@ nav button.on{color:#fff;background:var(--pan2, var(--panel2))}
     <div class="card"><h2>Who is holding this phone?</h2>
       <button class="rolebtn cesko" id="roleCesko"><div class="rt">Cesko, scorekeeper</div><div class="rd">At the draft. Logs every pick. The only device that writes to the board.</div></button>
       <button class="rolebtn ant" id="roleAnt"><div class="rt">Anthony, slot 8</div><div class="rd">Watching from anywhere, no account needed. Board refreshes live. Text Cesko your picks.</div></button>
-      <div class="joinrow" id="joinRow"><input id="joinInput" placeholder="Paste the board link Cesko texted you"><button id="joinBtn">Join</button></div>
+      <div class="joinrow" id="joinRow" style="display:none"><input id="joinInput"><button id="joinBtn">Join</button></div>
       <div class="finenote">The board syncs through a private room link. Anyone who has the link can view it, so keep it between the two of you.</div>
     </div>
   </section>
@@ -266,11 +266,14 @@ const P=[
 (function(){
 'use strict';
 var TEAMS=12,ROUNDS=15,TOTAL=180;
-var JB='https://jsonblob.com/api/jsonBlob';
+var GH_OWNER='ceskb24-droid',GH_REPO='kjffl-live',GH_BRANCH='main',GH_FILE='state.json';
+var API='https://api.github.com/repos/'+GH_OWNER+'/'+GH_REPO+'/contents/'+GH_FILE;
+var RAW='https://raw.githubusercontent.com/'+GH_OWNER+'/'+GH_REPO+'/'+GH_BRANCH+'/'+GH_FILE;
+var TOKEN=null,SHA=null;
 var LIMITS={QB:3,RB:8,WR:8,TE:3};
 var NAMES25=['2 QBs 1 Kupp','NO LOVE IN MA HOME','K3K0 J0N3$','Maserati 18','LIEING HURT$','WELCOME to the NABERHOOD','I WoULD dO HenRY thING fOR LOve','Brocked And Loaded','Get Schwifty','Django Achaned','Have your highest Week'];
 var ORDER26={1:'Ralph',2:'Spills',3:'Phil',4:'Tony',5:'Erich',6:'Purple Rain (Cesko)',7:'Hector',8:'Anthony',9:'Conner',10:'Mick',11:'Erik',12:'Twista'};
-var ROLE=null,ROOM=null;
+var ROLE=null;
 var STATE={v:2,started:false,me:6,ant:8,names:{},picks:[],X:[],ts:0};
 var taken=new Set(),view='role',showN=30,posF='ALL',q='',showN2=30,posF2='ALL',lastFocus=null,dirty=false,saveTimer=null,pollTimer=null;
 
@@ -289,40 +292,44 @@ function counts(t){var c={QB:0,RB:0,WR:0,TE:0};rosterOf(t).forEach(function(i){c
 function rebuildTaken(){taken=new Set(STATE.picks.map(function(p){return p.i;}));}
 function antPicks(){var out=[],r;for(r=1;r<=ROUNDS;r++){out.push(r%2===1?(r-1)*TEAMS+STATE.ant:r*TEAMS-STATE.ant+1);}return out;}
 function toast(msg){var t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('show');},2400);}
-function roomUrl(){return location.origin+location.pathname+'?room='+ROOM;}
 function setSync(html){$('syncBox').innerHTML=html;}
 
-/* ---------- room sync over jsonblob ---------- */
-function createRoom(){
-  setSync('<span class="warn">Creating room</span>');
-  STATE.ts=Date.now();
-  return fetch(JB,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(STATE)})
-    .then(function(res){
-      var loc=res.headers.get('Location')||res.headers.get('location');
-      if(!res.ok||!loc)throw new Error('no location');
-      ROOM=loc.split('/').pop();
-      try{history.replaceState(null,'',roomUrl());}catch(e){}
-      setSync('<span class="ok">Room live</span>');
-      return ROOM;
-    });
+/* ---------- sync through the repo ---------- */
+function b64(s){return btoa(unescape(encodeURIComponent(s)));}
+function loadToken(){try{TOKEN=localStorage.getItem('kjffl_gh_token')||null;}catch(e){}}
+function saveTokenVal(t){TOKEN=t;try{localStorage.setItem('kjffl_gh_token',t);}catch(e){}}
+function refreshSha(){
+  if(!TOKEN)return Promise.resolve();
+  return fetch(API+'?ref='+GH_BRANCH,{headers:{'Authorization':'Bearer '+TOKEN,'Accept':'application/vnd.github+json'}})
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(j){if(j&&j.sha)SHA=j.sha;})
+    .catch(function(){});
 }
 function pushState(){
-  if(ROLE!=='cesko'||!ROOM)return;
+  if(ROLE!=='cesko')return;
+  if(!TOKEN){setSync('<span class="bad">No token, local only</span>');return;}
   STATE.ts=Date.now();dirty=true;
   setSync('<span class="warn">Saving</span>');
-  fetch(JB+'/'+ROOM,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(STATE)})
+  try{localStorage.setItem('kjffl_state_bk',JSON.stringify(STATE));}catch(e){}
+  var body={message:'board update, '+STATE.picks.length+' picks',content:b64(JSON.stringify(STATE)),branch:GH_BRANCH};
+  if(SHA)body.sha=SHA;
+  fetch(API,{method:'PUT',headers:{'Authorization':'Bearer '+TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(function(res){
+      if(res.status===409||res.status===422){refreshSha();throw new Error('sha');}
       if(!res.ok)throw new Error('bad');
+      return res.json();
+    })
+    .then(function(j){
+      if(j&&j.content&&j.content.sha)SHA=j.content.sha;
       dirty=false;
       setSync('<span class="ok">Synced '+new Date().toLocaleTimeString().replace(/:\d\d($| )/,'$1')+'</span>');
     })
-    .catch(function(){setSync('<span class="bad">Offline, retrying</span>');});
+    .catch(function(){setSync('<span class="bad">Retrying sync</span>');});
 }
 function save(){clearTimeout(saveTimer);saveTimer=setTimeout(pushState,350);}
-setInterval(function(){if(ROLE==='cesko'&&dirty&&ROOM)pushState();},9000);
+setInterval(function(){if(ROLE==='cesko'&&dirty&&TOKEN)pushState();},9000);
 function pullState(){
-  if(!ROOM)return Promise.resolve(null);
-  return fetch(JB+'/'+ROOM,{headers:{'Accept':'application/json'}})
+  return fetch(RAW+'?t='+Date.now(),{cache:'no-store'})
     .then(function(res){if(!res.ok)throw new Error('bad');return res.json();})
     .catch(function(){return null;});
 }
@@ -333,15 +340,26 @@ function startPoll(){
       if(d&&d.ts&&d.ts>STATE.ts){STATE=d;rebuildTaken();render();}
       if(d){
         var age=Math.max(0,Math.round((Date.now()-STATE.ts)/1000));
-        setSync('<span class="ok">Live</span> · '+(age>120?Math.round(age/60)+'m':age+'s')+' ago');
+        setSync('<span class="ok">Live</span> \u00b7 '+(age>120?Math.round(age/60)+'m':age+'s')+' ago');
       }else setSync('<span class="bad">Reconnecting</span>');
     });
   };
   tick();
-  pollTimer=setInterval(tick,4000);
+  pollTimer=setInterval(tick,5000);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)tick();});
 }
-
+function showToken(){
+  var box=$('shareBox');
+  box.innerHTML='<div class="sharecard"><div class="st">Sync key needed once</div>'+
+    '<div class="sharerow"><input id="tokInput" placeholder="Paste the GitHub token" autocomplete="off"><button id="tokBtn">Save</button></div>'+
+    '<div class="sd">Fine grained token scoped to kjffl-live with Contents read and write. It stays on this phone only.</div></div>';
+  $('tokBtn').addEventListener('click',function(){
+    var v=$('tokInput').value.trim();
+    if(!v){toast('Paste the token first');return;}
+    saveTokenVal(v);
+    refreshSha().then(function(){pushState();showShare(true);toast('Sync is on');});
+  });
+}
 /* ---------- views ---------- */
 function setView(v){
   view=v;
@@ -381,9 +399,11 @@ function undo(){
 }
 function showShare(force){
   var box=$('shareBox');
-  if(!ROOM){box.innerHTML=force?'<div class="sharecard"><div class="st">No room yet</div><div class="sd">Sync is offline. Picks still log on this phone. Tap the status in the header to retry.</div></div>':'';return;}
+  if(!TOKEN){if(force)showToken();else box.innerHTML='';return;}
+  if(!force){box.innerHTML='';return;}
+  var link=location.origin+location.pathname;
   box.innerHTML='<div class="sharecard"><div class="st">Anthony\u2019s link, text it to him</div>'+
-    '<div class="sharerow"><input id="shareUrl" readonly value="'+roomUrl()+'"><button id="copyBtn">Copy</button></div>'+
+    '<div class="sharerow"><input id="shareUrl" readonly value="'+link+'"><button id="copyBtn">Copy</button></div>'+
     '<div class="sd">Opens in any browser, no account. He taps Anthony and the board follows live. <span id="hideShare" style="color:var(--gold);font-weight:800">Hide</span></div></div>';
   $('copyBtn').addEventListener('click',function(){
     var inp=$('shareUrl');inp.select();inp.setSelectionRange(0,999);
@@ -574,55 +594,44 @@ function collectSetup(){
 }
 
 /* ---------- boot + wiring ---------- */
-var params=new URLSearchParams(location.search);
-if(params.get('room'))ROOM=params.get('room').replace(/[^A-Za-z0-9]/g,'');
+loadToken();
 
 $('roleCesko').addEventListener('click',function(){
   ROLE='cesko';
-  $('hdrStatus').textContent='Scorekeeper · every tap logs to the team on the clock';
-  if(ROOM){
-    pullState().then(function(d){
-      if(d){STATE=d;rebuildTaken();$('resumeBtn').style.display='block';}
-      buildSetup();setView('setup');
-    });
-  }else{buildSetup();setView('setup');}
+  $('hdrStatus').textContent='Scorekeeper \u00b7 every tap logs to the team on the clock';
+  pullState().then(function(d){
+    if(d&&d.started){STATE=d;rebuildTaken();$('resumeBtn').style.display='block';}
+    else{try{var bk=localStorage.getItem('kjffl_state_bk');if(bk){var b=JSON.parse(bk);if(b&&b.started){STATE=b;rebuildTaken();$('resumeBtn').style.display='block';}}}catch(e){}}
+    buildSetup();setView('setup');
+  });
 });
 $('roleAnt').addEventListener('click',function(){
   ROLE='ant';
-  $('hdrStatus').textContent='Watching live · text Cesko your picks';
-  if(!ROOM){$('joinRow').classList.add('open');$('joinInput').focus();return;}
+  $('hdrStatus').textContent='Watching live \u00b7 text Cesko your picks';
   setView('watch');startPoll();
 });
 $('joinBtn').addEventListener('click',function(){
-  var v=$('joinInput').value.trim();
-  var m=v.match(/room=([A-Za-z0-9]+)/);
-  ROOM=m?m[1]:v.replace(/[^A-Za-z0-9]/g,'');
-  if(!ROOM){toast('Paste the full link from Cesko');return;}
-  try{history.replaceState(null,'',roomUrl());}catch(e){}
   ROLE='ant';setView('watch');startPoll();
 });
 $('startBtn').addEventListener('click',function(){
   if(!collectSetup())return;
   STATE.started=true;
-  var go=function(){setView('score');showShare(true);toast('Board open. Log every pick as it happens.');};
-  if(ROOM){pushState();go();showShare(false);showShare(true);}
-  else{
-    createRoom().then(function(){go();}).catch(function(){
-      setSync('<span class="bad">No sync, local only</span>');
-      go();
-    });
-  }
+  setView('score');
+  if(TOKEN){refreshSha().then(function(){pushState();});showShare(true);}
+  else showToken();
+  toast('Board open. Log every pick as it happens.');
 });
 $('resumeBtn').addEventListener('click',function(){
   pullState().then(function(d){
-    if(d){STATE=d;rebuildTaken();}
-    setView('score');showShare(true);toast('Resumed at pick '+(STATE.picks.length+1));
+    if(d&&d.ts&&(!STATE.ts||d.ts>=STATE.ts)){STATE=d;rebuildTaken();}
+    setView('score');
+    if(TOKEN){refreshSha();showShare(false);}else showToken();
+    toast('Resumed at pick '+(STATE.picks.length+1));
   });
 });
 $('syncBox').addEventListener('click',function(){
   if(ROLE==='cesko'){
-    if(!ROOM){createRoom().then(function(){pushState();showShare(true);toast('Sync is back');}).catch(function(){toast('Still offline, picks are safe on this phone');});}
-    else pushState();
+    if(!TOKEN)showToken();else{refreshSha().then(function(){pushState();});}
   }
 });
 $('undoBtn').addEventListener('click',undo);
