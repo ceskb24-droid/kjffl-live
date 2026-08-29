@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>KJFFL Live Draft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --board:#151021; --wall:#0E0A17; --panel:#201936; --panel2:#2A2148; --line:#3B3160;
+  --ink:#F3EFFC; --dim:#A79EC6; --faint:#6E668F;
+  --you:#8D6BF4; --gold:#F2C14E; --live:#FF4D5E;
+  --qb:#EA5D77; --rb:#43C68C; --wr:#58A6F4; --te:#EFA24B;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--board);color:var(--ink);font-family:'Archivo',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overscroll-behavior:none}
+body{padding-bottom:78px}
+button{font-family:inherit;border:none;cursor:pointer}
+input,select{font-family:inherit}
+
+header{position:sticky;top:0;z-index:40;background:linear-gradient(180deg,#1B1430,#171126);border-bottom:1px solid var(--line);padding:12px 16px 10px}
+.brand{display:flex;align-items:center;justify-content:space-between}
+.brand h1{font-size:17px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}
+.brand h1 .lv{color:var(--live)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--live);margin-right:7px;vertical-align:1px;animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.sync{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:right}
+.sync .ok{color:var(--rb)} .sync .warn{color:var(--gold)} .sync .bad{color:var(--live)}
+.statusline{font-size:11px;color:var(--dim);letter-spacing:.06em;margin-top:2px}
+
+main{padding:14px 14px 8px;max-width:720px;margin:0 auto}
+.view{display:none}
+.view.active{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.card h2{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+
+.rolebtn{width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:12px;color:var(--ink)}
+.rolebtn:active{background:var(--panel2)}
+.rolebtn .rt{font-size:18px;font-weight:900}
+.rolebtn .rd{font-size:12.5px;color:var(--dim);margin-top:4px;line-height:1.45;font-weight:500}
+.rolebtn.cesko{border-color:var(--you)} .rolebtn.ant{border-color:var(--gold)}
+.finenote{font-size:11px;color:var(--faint);line-height:1.5;margin-top:6px}
+.joinrow{display:none;gap:8px;margin-top:10px}
+.joinrow.open{display:flex}
+.joinrow input{flex:1;background:var(--board);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:11px 12px;font-size:13px}
+.joinrow button{background:var(--gold);color:#151021;font-weight:900;border-radius:10px;padding:11px 16px;font-size:13px}
+
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.setrow label{font-size:14px;font-weight:600}
+select.slotsel{background:var(--board);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;font-weight:700}
+.teamrow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.teamrow .tn{flex:0 0 30px;font-size:12px;font-weight:900;color:var(--faint);text-align:right}
+.teamrow input{flex:1;background:var(--board);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:9px 11px;font-size:13px}
+.teamrow input:focus{outline:none;border-color:var(--you)}
+.chiptray{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.chiptray button{background:var(--panel2);border:1px solid var(--line);color:var(--dim);font-size:10.5px;font-weight:700;padding:6px 9px;border-radius:8px}
+.go{width:100%;background:var(--you);color:#fff;font-size:15px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:15px;border-radius:12px;margin-top:6px}
+.go.ghost{background:transparent;border:1px solid var(--line);color:var(--dim);font-size:12px;padding:12px;margin-top:10px}
+
+.sharecard{background:var(--panel2);border:1px solid var(--gold);border-radius:14px;padding:14px;margin-bottom:12px}
+.sharecard .st{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.sharerow{display:flex;gap:8px}
+.sharerow input{flex:1;background:var(--board);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:10px 12px;font-size:12px}
+.sharerow button{background:var(--gold);color:#151021;font-weight:900;border-radius:10px;padding:10px 14px;font-size:12px}
+.sharecard .sd{font-size:11px;color:var(--dim);margin-top:8px;line-height:1.5}
+
+.clock{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px;position:relative}
+.clock.hot{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 8px 28px rgba(242,193,78,.18)}
+.clock .kicker{font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.clock.hot .kicker{color:var(--gold)}
+.clock .who{font-size:21px;font-weight:900;margin-top:2px;padding-right:78px;overflow-wrap:anywhere}
+.clock .meta{font-size:12px;color:var(--dim);margin-top:3px;font-weight:600}
+.clock .picknum{position:absolute;right:14px;top:12px;text-align:right}
+.clock .picknum .n{font-size:28px;font-weight:900;color:var(--gold);line-height:1}
+.clock .picknum .l{font-size:9px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase}
+.banner{background:var(--gold);color:#151021;border-radius:14px;padding:16px;margin-bottom:12px;font-weight:900;font-size:16px;text-align:center;animation:pulse 1.4s infinite}
+.banner .sub{font-size:12px;font-weight:700;margin-top:4px}
+
+.actrow{display:flex;gap:8px;margin-bottom:10px}
+.actrow button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--dim);font-size:11.5px;font-weight:800;padding:11px 6px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase}
+.filters{display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap}
+.search{flex:1;min-width:140px;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:10px 12px;font-size:14px}
+.search::placeholder{color:var(--faint)}
+.pf{display:flex;gap:6px;flex-wrap:wrap}
+.pf button{background:var(--panel);border:1px solid var(--line);color:var(--dim);font-size:11px;font-weight:800;padding:8px 10px;border-radius:9px}
+.pf button.on{color:#fff;border-color:transparent}
+.pf button.on[data-p="QB"]{background:var(--qb)} .pf button.on[data-p="RB"]{background:var(--rb)}
+.pf button.on[data-p="WR"]{background:var(--wr)} .pf button.on[data-p="TE"]{background:var(--te)}
+.pf button.on[data-p="ALL"]{background:var(--you)} .pf button.on[data-p="RK"]{background:var(--gold);color:#151021}
+
+.plist{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);margin-bottom:8px}
+.prow{display:flex;align-items:center;gap:12px;padding:11px 13px;border-bottom:1px solid rgba(59,49,96,.55)}
+.prow:last-child{border-bottom:none}
+.prow:active{background:var(--panel2)}
+.posbadge{flex:0 0 40px;text-align:center;font-size:11px;font-weight:900;border-radius:8px;padding:6px 0;color:#10131c}
+.posbadge.QB{background:var(--qb)} .posbadge.RB{background:var(--rb)} .posbadge.WR{background:var(--wr)} .posbadge.TE{background:var(--te)}
+.pinfo{flex:1;min-width:0}
+.pname{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pname .rk{color:var(--gold);font-size:10px;font-weight:900;margin-left:6px;vertical-align:1px}
+.pmeta{font-size:11px;color:var(--dim);font-weight:600;margin-top:1px}
+.padp{flex:0 0 auto;text-align:right}
+.padp .a{font-size:14px;font-weight:900}
+.padp .al{font-size:9px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase}
+.morebtn{width:100%;background:transparent;color:var(--dim);font-size:12px;font-weight:700;padding:12px}
+
+.custom{display:none;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.custom.open{display:flex}
+.custom input{flex:2;min-width:120px;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:10px 12px;font-size:13px}
+.custom select{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:10px;font-size:13px;font-weight:700}
+.custom button{flex:1;background:var(--gold);color:#151021;font-weight:900;border-radius:10px;font-size:12px;padding:10px}
+
+/* THE WALL: real sticker draft board */
+.boardwrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:var(--wall);max-height:76vh;-webkit-overflow-scrolling:touch}
+table.bd{border-collapse:separate;border-spacing:5px;padding:6px 8px 10px}
+table.bd th{position:sticky;top:0;z-index:3;background:var(--panel2);color:var(--ink);font-size:9.5px;font-weight:900;letter-spacing:.03em;text-transform:uppercase;padding:9px 5px;border-radius:6px;min-width:92px;max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.5)}
+table.bd th.corner{background:transparent;box-shadow:none;min-width:34px;max-width:34px}
+table.bd th.me{background:var(--you);color:#0F0B18}
+table.bd th.ant{background:var(--gold);color:#0F0B18}
+td.rl{position:sticky;left:0;z-index:2;background:var(--wall)}
+.rlabel{font-size:11px;color:var(--gold);font-weight:900;padding:0 4px;text-align:center;letter-spacing:.05em}
+.cell{width:92px;height:58px;border-radius:5px;padding:6px 7px;color:#141021;overflow:hidden;box-shadow:0 3px 5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.28)}
+.cell .cnm{font-size:12px;font-weight:900;text-transform:uppercase;line-height:1.05;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell .ctm{font-size:9px;font-weight:800;opacity:.78;margin-top:3px;text-transform:uppercase;letter-spacing:.04em}
+.cell.empty{background:transparent;border:1px dashed #2A2245;box-shadow:none}
+.cell.empty .ctm{color:#4A4270;opacity:1}
+.cell.QB{background:var(--qb)} .cell.RB{background:var(--rb)} .cell.WR{background:var(--wr)} .cell.TE{background:var(--te)}
+.cell.mine{outline:2px solid var(--you);outline-offset:1px}
+.cell.anth{outline:2px solid var(--gold);outline-offset:1px}
+
+.teamsel{width:100%;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;font-weight:700;margin-bottom:12px}
+.slotrow{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:1px solid rgba(59,49,96,.5)}
+.slotrow:last-child{border-bottom:none}
+.slottag{flex:0 0 44px;font-size:10px;font-weight:900;color:var(--faint)}
+.slotrow .pn{flex:1;font-size:13px;font-weight:700;overflow-wrap:anywhere}
+.slotrow .pn.empty{color:var(--faint);font-weight:500}
+.slotrow .bw{font-size:10px;color:var(--dim);font-weight:700}
+.needbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.need{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800}
+.need b{color:var(--gold)}
+
+.feedrow{display:flex;gap:10px;align-items:center;padding:9px 13px;border-bottom:1px solid rgba(59,49,96,.5);font-size:12.5px}
+.feedrow:last-child{border-bottom:none}
+.feedrow .fo{flex:0 0 44px;font-weight:900;color:var(--gold)}
+.feedrow .fp{flex:1;font-weight:700;overflow-wrap:anywhere}
+.feedrow .ft{color:var(--dim);font-weight:600;font-size:11px;text-align:right;max-width:34%;overflow-wrap:anywhere}
+.upnext{font-size:12px;color:var(--dim);line-height:1.6;margin:2px 2px 12px}
+.upnext b{color:var(--ink)}
+
+nav{position:fixed;bottom:0;left:0;right:0;z-index:50;background:#171126;border-top:1px solid var(--line);display:none;padding:6px 8px calc(8px + env(safe-area-inset-bottom))}
+nav.show{display:flex}
+nav button{flex:1;background:transparent;color:var(--faint);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:11px 4px;border-radius:10px}
+nav button.on{color:#fff;background:var(--pan2, var(--panel2))}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:92px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-size:12px;font-weight:700;padding:10px 16px;border-radius:99px;z-index:60;opacity:0;transition:opacity .25s;pointer-events:none;max-width:88%;text-align:center}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><h1><span class="dot"></span>KJFFL <span class="lv">Live</span></h1><span class="sync" id="syncBox">Local</span></div>
+  <div class="statusline" id="hdrStatus">The real board · Sunday, Aug 30</div>
+</header>
+
+<main>
+  <!-- ROLE -->
+  <section id="view-role" class="view active">
+    <div class="card"><h2>Who is holding this phone?</h2>
+      <button class="rolebtn cesko" id="roleCesko"><div class="rt">Cesko, scorekeeper</div><div class="rd">At the draft. Logs every pick. The only device that writes to the board.</div></button>
+      <button class="rolebtn ant" id="roleAnt"><div class="rt">Anthony, slot 8</div><div class="rd">Watching from anywhere, no account needed. Board refreshes live. Text Cesko your picks.</div></button>
+      <div class="joinrow" id="joinRow"><input id="joinInput" placeholder="Paste the board link Cesko texted you"><button id="joinBtn">Join</button></div>
+      <div class="finenote">The board syncs through a private room link. Anyone who has the link can view it, so keep it between the two of you.</div>
+    </div>
+  </section>
+
+  <!-- SETUP (Cesko) -->
+  <section id="view-setup" class="view">
+    <div class="card"><h2>Slots</h2>
+      <div class="setrow"><label>Purple Rain (you)</label><select id="meSlotSel" class="slotsel"></select></div>
+      <div class="setrow"><label>Anthony</label><select id="antSlotSel" class="slotsel"></select></div>
+    </div>
+    <div class="card"><h2>Draft order, team names</h2>
+      <div id="teamRows"></div>
+      <div class="finenote">Prefilled from the draft order sheet. Tap a slot's box to fix a name or drop in a team name from the tray below. Editable any time from the board.</div>
+      <div class="chiptray" id="nameTray"></div>
+    </div>
+    <button class="go" id="startBtn">Open the board</button>
+    <button class="go ghost" id="resumeBtn" style="display:none">Resume the saved draft</button>
+  </section>
+
+  <!-- SCORE (Cesko) -->
+  <section id="view-score" class="view">
+    <div id="shareBox"></div>
+    <div id="clockBox"></div>
+    <div class="actrow">
+      <button id="undoBtn">Undo last</button>
+      <button id="customTog">+ Not listed</button>
+      <button id="inviteBtn">Anthony's link</button>
+      <button id="editTeamsBtn">Teams</button>
+    </div>
+    <div class="custom" id="customForm">
+      <input id="cName" placeholder="Player name">
+      <select id="cPos"><option>QB</option><option>RB</option><option>WR</option><option>TE</option></select>
+      <input id="cTeam" placeholder="NFL team" style="flex:1;min-width:70px">
+      <button id="cAdd">Log pick</button>
+    </div>
+    <div class="filters">
+      <input id="search" class="search" type="search" placeholder="Search player, tap to log to team on the clock">
+    </div>
+    <div class="filters"><div class="pf" id="posFilters">
+      <button data-p="ALL" class="on">All</button><button data-p="QB">QB</button><button data-p="RB">RB</button><button data-p="WR">WR</button><button data-p="TE">TE</button><button data-p="RK">RK</button>
+    </div></div>
+    <div class="plist" id="plist"></div>
+    <button class="morebtn" id="moreBtn">Show more</button>
+  </section>
+
+  <!-- WATCH (Anthony) -->
+  <section id="view-watch" class="view">
+    <div id="watchBanner"></div>
+    <div id="watchClock"></div>
+    <div class="upnext" id="upNext"></div>
+    <div class="card" style="padding:6px 3px"><div id="feedBox"></div></div>
+  </section>
+
+  <!-- BEST (Anthony) -->
+  <section id="view-best" class="view">
+    <div class="filters"><div class="pf" id="posFilters2">
+      <button data-p="ALL" class="on">All</button><button data-p="QB">QB</button><button data-p="RB">RB</button><button data-p="WR">WR</button><button data-p="TE">TE</button><button data-p="RK">RK</button>
+    </div></div>
+    <div class="plist" id="bestList"></div>
+    <button class="morebtn" id="moreBtn2">Show more</button>
+  </section>
+
+  <!-- BOARD (both) -->
+  <section id="view-board" class="view">
+    <div class="boardwrap" id="boardWrap"></div>
+  </section>
+
+  <!-- TEAMS (both) -->
+  <section id="view-teams" class="view">
+    <select id="teamSel" class="teamsel"></select>
+    <div class="needbar" id="needBar"></div>
+    <div class="plist" id="teamRoster"></div>
+  </section>
+</main>
+
+<nav id="navScore">
+  <button data-v="score" class="on">Log</button>
+  <button data-v="board">Board</button>
+  <button data-v="teams">Rosters</button>
+</nav>
+<nav id="navWatch">
+  <button data-v="watch" class="on">Feed</button>
+  <button data-v="best">Best left</button>
+  <button data-v="board">Board</button>
+  <button data-v="teams">Rosters</button>
+</nav>
+<div class="toast" id="toast"></div>
+<script>
+// name, pos, team, bye, market ADP (FFPC 12tm SF PPR, Aug 27 2026), rookie flag
+const P=[
+["Jahmyr Gibbs","RB","DET",6,1],["Josh Allen","QB","BUF",7,3],["Bijan Robinson","RB","ATL",11,4],["Ja'Marr Chase","WR","CIN",6,5],["Lamar Jackson","QB","BAL",13,6],["Puka Nacua","WR","LAR",11,7],["Drake Maye","QB","NE",11,8],["Christian McCaffrey","RB","SF",8,9],["Jaxon Smith-Njigba","WR","SEA",11,10],["Jonathan Taylor","RB","IND",13,11],["Brock Bowers","TE","LV",13,12],["Amon-Ra St. Brown","WR","DET",6,13],["Joe Burrow","QB","CIN",6,14],["James Cook","RB","BUF",7,15],["Jayden Daniels","QB","WAS",7,16],["Jalen Hurts","QB","PHI",10,17],["Chase Brown","RB","CIN",6,18],["CeeDee Lamb","WR","DAL",14,19],["Caleb Williams","QB","CHI",10,20],["Trey McBride","TE","ARI",14,21],["Justin Jefferson","WR","MIN",6,22],["Ashton Jeanty","RB","LV",13,23],["Saquon Barkley","RB","PHI",10,24],["De'Von Achane","RB","MIA",6,25],["Omarion Hampton","RB","LAC",7,26],["Dak Prescott","QB","DAL",14,27],["Justin Herbert","QB","LAC",7,28],["Kenneth Walker","RB","KC",5,29],["Trevor Lawrence","QB","JAC",7,30],["Derrick Henry","RB","BAL",13,31],["A.J. Brown","WR","NE",11,32],["Colston Loveland","TE","CHI",10,33],["Drake London","WR","ATL",11,34],["Jaxson Dart","QB","NYG",8,35],["Nico Collins","WR","HOU",8,36],["Brock Purdy","QB","SF",8,37],["Bo Nix","QB","DEN",10,38],["Patrick Mahomes","QB","KC",5,39],["Malik Nabers","WR","NYG",8,40],["Jared Goff","QB","DET",6,41],["George Pickens","WR","DAL",14,42],["Matthew Stafford","QB","LAR",11,43],["Chris Olave","WR","NO",8,44],["Jeremiyah Love","RB","ARI",14,45,1],["Kyren Williams","RB","LAR",11,46],["Kyler Murray","QB","MIN",6,47],["Rashee Rice","WR","KC",5,48],["Javonte Williams","RB","DAL",14,49],["Breece Hall","RB","NYJ",13,50],["Tyler Warren","TE","IND",13,51],["DeVonta Smith","WR","PHI",10,52],["Baker Mayfield","QB","TB",10,53],["Tyler Shough","QB","NO",8,54],["Jordan Love","QB","GB",11,55],["Zay Flowers","WR","BAL",13,56],["Ladd McConkey","WR","LAC",7,57],["Travis Etienne","RB","NO",8,58],["Malik Willis","QB","MIA",6,59],["Josh Jacobs","RB","GB",11,60],["D'Andre Swift","RB","CHI",10,61],["Cam Skattebo","RB","NYG",8,62],["Tee Higgins","WR","CIN",6,63],["Garrett Wilson","WR","NYJ",13,64],["Jaylen Waddle","WR","DEN",10,65],["Sam Darnold","QB","SEA",11,66],["Emeka Egbuka","WR","TB",10,67],["Daniel Jones","QB","IND",13,68],["Tetairoa McMillan","WR","CAR",5,69],["Bhayshul Tuten","RB","JAC",7,70],["David Montgomery","RB","HOU",8,71],["C.J. Stroud","QB","HOU",8,72],["DJ Moore","WR","BUF",7,73],["Luther Burden","WR","CHI",10,74],["Quinshon Judkins","RB","CLE",11,75],["Jadarian Price","RB","SEA",11,76,1],["Bucky Irving","RB","TB",10,77],["Tucker Kraft","TE","GB",11,78],["Cam Ward","QB","TEN",9,79],["Davante Adams","WR","LAR",11,80],["Kyle Pitts","TE","ATL",11,81],["Terry McLaurin","WR","WAS",7,82],["Jameson Williams","WR","DET",6,83],["TreVeyon Henderson","RB","NE",11,84],["Rome Odunze","WR","CHI",10,85],["Bryce Young","QB","CAR",5,86],["Harold Fannin","TE","CLE",11,87],["Parker Washington","WR","JAC",7,88],["Sam LaPorta","TE","DET",6,89],["Christian Watson","WR","GB",11,90],["Rhamondre Stevenson","RB","NE",11,91],["Jaylen Warren","RB","PIT",9,92],["Jacoby Brissett","QB","ARI",14,93],["Jonathon Brooks","RB","CAR",5,94],["Mike Evans","WR","SF",8,95],["George Kittle","TE","SF",8,96],["Marvin Harrison","WR","ARI",14,97],["Tony Pollard","RB","TEN",9,98],["Rico Dowdle","RB","PIT",9,99],["Aaron Rodgers","QB","PIT",9,100],["Carnell Tate","WR","TEN",9,101,1],["Travis Kelce","TE","KC",5,102],["Geno Smith","QB","NYJ",13,103],["Isaiah Likely","TE","NYG",8,104],["Fernando Mendoza","QB","LV",13,105,1],["Brian Thomas","WR","JAC",7,106],["Dallas Goedert","TE","PHI",10,107],["Kenneth Gainwell","RB","TB",10,108],["RJ Harvey","RB","DEN",10,109],["Blake Corum","RB","LAR",11,110],["Dalton Kincaid","TE","BUF",7,111],["Jordan Mason","RB","MIN",6,112],["Courtland Sutton","WR","DEN",10,113],["Chris Godwin","WR","TB",10,114],["DK Metcalf","WR","PIT",9,115],["Jake Ferguson","TE","DAL",14,116],["J.K. Dobbins","RB","DEN",10,117],["Chuba Hubbard","RB","CAR",5,118],["Quentin Johnston","WR","LAC",7,119],["Jacory Croskey-Merritt","RB","WAS",7,120],["Mark Andrews","TE","BAL",13,121],["Josh Downs","WR","IND",13,122],["Michael Wilson","WR","ARI",14,123],["Juwan Johnson","TE","NO",8,124],["De'Zhaun Stribling","WR","SF",8,125,1],["Michael Pittman","WR","PIT",9,126],["Wan'Dale Robinson","WR","TEN",9,127],["Stefon Diggs","WR","WAS",7,128],["Rachaad White","RB","WAS",7,129],["Jayden Reed","WR","GB",11,130],["Kyle Monangai","RB","CHI",10,131],["Alec Pierce","WR","IND",13,132],["Chig Okonkwo","TE","WAS",7,133],["Aaron Jones","RB","MIN",6,134],["Brenton Strange","TE","JAC",7,135],["Makai Lemon","WR","PHI",10,136,1],["KC Concepcion","WR","CLE",11,137,1],["Jordan Addison","WR","MIN",6,138],["Chris Rodriguez","RB","JAC",7,139],["Matthew Golden","WR","GB",11,140],["Woody Marks","RB","HOU",8,141],["Hunter Henry","TE","NE",11,142],["Keaton Mitchell","RB","LAC",7,143],["Dalton Schultz","TE","HOU",8,144],["Mike Washington","RB","LV",13,145,1],["Tyler Allgeier","RB","ARI",14,146],["Deebo Samuel","WR","SF",8,147],["Terrance Ferguson","TE","LAR",11,148],["Jordyn Tyson","WR","NO",8,149,1],["Tua Tagovailoa","QB","ATL",11,150],["Jakobi Meyers","WR","JAC",7,151],["T.J. Hockenson","TE","MIN",6,152],["MarShawn Lloyd","RB","GB",11,153],["Jonah Coleman","RB","DEN",10,154,1],["Xavier Worthy","WR","KC",5,155],["Tyjae Spears","RB","TEN",9,156],["Romeo Doubs","WR","NE",11,157],["Jalen Coker","WR","CAR",5,158],["Zach Charbonnet","RB","SEA",11,159],["Khalil Shakir","WR","BUF",7,160],["Rashid Shaheed","WR","SEA",11,161],["Greg Dulcich","TE","MIA",6,162],["Dylan Sampson","RB","CLE",11,163],["Deshaun Watson","QB","CLE",11,164],["Oronde Gadsden","TE","LAC",7,165],["Kenyon Sadiq","TE","NYJ",13,166,1],["Tyrone Tracy","RB","NYG",8,167],["Denzel Boston","WR","CLE",11,168,1],["Tank Bigsby","RB","PHI",10,169],["AJ Barner","TE","SEA",11,170],["Tre Tucker","WR","LV",13,171],["Michael Penix","QB","ATL",11,172],["Shedeur Sanders","QB","CLE",11,173],["Ja'Kobi Lane","WR","BAL",13,174,1],["Braelon Allen","RB","NYJ",13,175],["Pat Freiermuth","TE","PIT",9,176],["Kirk Cousins","QB","LV",13,177],["Alvin Kamara","RB","NO",8,178],["Isiah Pacheco","RB","DET",6,179],["Brian Robinson","RB","ATL",11,180],["Jalen Nailor","WR","LV",13,181],["Cade Otton","TE","TB",10,182],["Gunnar Helm","TE","TEN",9,183],["Kaelon Black","RB","SF",8,184,1],["Keenan Allen","WR","IND",13,185],["Adonai Mitchell","WR","NYJ",13,186],["Jaydon Blue","RB","DAL",14,187],["Emmett Johnson","RB","KC",5,188,1],["Jalen McMillan","WR","TB",10,189],["Dontayvion Wicks","WR","PHI",10,190],["Tank Dell","WR","HOU",8,191],["Malik Washington","WR","MIA",6,192],["Cyrus Allen","WR","KC",5,193,1],["Justice Hill","RB","BAL",13,194],["Ray Davis","RB","BUF",7,195],["Evan Engram","TE","DEN",10,196],["Tre' Harris","WR","LAC",7,197],["Kayshon Boutte","WR","NE",11,198],["Ryan Flournoy","WR","DAL",14,199],["Caleb Douglas","WR","MIA",6,200,1],["David Njoku","TE","LAC",7,201],["Kimani Vidal","RB","LAC",7,202],["Jauan Jennings","WR","MIN",6,203],["Pat Bryant","WR","DEN",10,204],["Jerry Jeudy","WR","CLE",11,205],["Kaytron Allen","RB","WAS",7,206,1],["Darren Waller","TE","CAR",5,207],["Travis Hunter","WR","JAC",7,208],["Carson Beck","QB","ARI",14,209,1],["Calvin Ridley","WR","TEN",9,210],["Mike Gesicki","TE","CIN",6,211],["Omar Cooper","WR","NYJ",13,212,1],["Colby Parkinson","TE","LAR",11,213],["George Holani","RB","SEA",11,214],["Sean Tucker","RB","TB",10,215],["Michael Mayer","TE","LV",13,216],["Samaje Perine","RB","CIN",6,217],["Najee Harris","RB","NYG",8,218],["Malachi Fields","WR","NYG",8,219,1],["Nicholas Singleton","RB","TEN",9,220,1],["Devaughn Vele","WR","NO",8,221],["Jordan James","RB","SF",8,222,1],["Jaylen Wright","RB","MIA",6,223],["Mason Taylor","TE","NYJ",13,224],["Chris Bell","WR","MIA",6,225,1],["Zachariah Branch","WR","ATL",11,226,1],["Cooper Kupp","WR","SEA",11,227],["Demond Claiborne","RB","MIN",6,228,1],["Isaac TeSlaa","WR","DET",6,229],["Rashod Bateman","WR","BAL",13,230],["Germie Bernard","WR","PIT",9,231,1],["Ted Hurst","WR","TB",10,234,1],["James Conner","RB","ARI",14,235],["Mac Jones","QB","SF",8,236],["Seth McGowan","RB","IND",13,237,1],["Emari Demercado","RB","KC",5,238],["Jaylin Noel","WR","HOU",8,240],["Jameis Winston","QB","NYG",8,241],["Eli Stowers","TE","PHI",10,244,1],["Troy Franklin","WR","DEN",10,246],["Antonio Williams","WR","WAS",7,247,1],["Adam Randall","RB","BAL",13,248,1],["Keon Coleman","WR","BUF",7,251],["J.J. McCarthy","QB","MIN",6,252],["Darnell Mooney","WR","NYG",8,253],["Theo Johnson","TE","NYG",8,254],["Ty Simpson","QB","LAR",11,257,1],["Ty Johnson","RB","BUF",7,258],["Tyquan Thornton","WR","KC",5,261],["Darius Slayton","WR","NYG",8,268],["Cade Klubnik","QB","NYJ",13,270,1],["Ollie Gordon","RB","MIA",6,271],["LeQuint Allen","RB","JAC",7,272],["Jack Bech","WR","LV",13,274],["DJ Giddens","RB","IND",13,275],["Tory Horton","WR","SEA",11,276],["Riley Leonard","QB","IND",13,290]
+];
+</script>
+<script>
+(function(){
+'use strict';
+var TEAMS=12,ROUNDS=15,TOTAL=180;
+var JB='https://jsonblob.com/api/jsonBlob';
+var LIMITS={QB:3,RB:8,WR:8,TE:3};
+var NAMES25=['2 QBs 1 Kupp','NO LOVE IN MA HOME','K3K0 J0N3$','Maserati 18','LIEING HURT$','WELCOME to the NABERHOOD','I WoULD dO HenRY thING fOR LOve','Brocked And Loaded','Get Schwifty','Django Achaned','Have your highest Week'];
+var ORDER26={1:'Ralph',2:'Spills',3:'Phil',4:'Tony',5:'Erich',6:'Purple Rain (Cesko)',7:'Hector',8:'Anthony',9:'Conner',10:'Mick',11:'Erik',12:'Twista'};
+var ROLE=null,ROOM=null;
+var STATE={v:2,started:false,me:6,ant:8,names:{},picks:[],X:[],ts:0};
+var taken=new Set(),view='role',showN=30,posF='ALL',q='',showN2=30,posF2='ALL',lastFocus=null,dirty=false,saveTimer=null,pollTimer=null;
+
+function $(id){return document.getElementById(id);}
+function gp(i){if(i<P.length)return P[i];var x=STATE.X[i-P.length]||['Unknown','WR','FA'];return [x[0],x[1],x[2],0,999,0];}
+function adjA(i){var p=P[i];return p[1]==='QB'?p[4]*0.80:(p[1]==='TE'?p[4]*1.15:p[4]);}
+var ADJ=P.map(function(_,i){return i;}).sort(function(a,b){return adjA(a)-adjA(b);});
+var RANK=[];ADJ.forEach(function(pi,ix){RANK[pi]=ix+1;});
+function teamAt(o){var r=Math.ceil(o/TEAMS),k=(o-1)%TEAMS;return r%2===1?k+1:TEAMS-k;}
+function roundOf(o){return Math.ceil(o/TEAMS);}
+function pickLabel(o){var r=roundOf(o),k=o-(r-1)*TEAMS;return r+'.'+(k<10?'0':'')+k;}
+function teamName(t){return STATE.names[t]||ORDER26[t]||('Team '+t);}
+function stickName(n){var parts=n.split(' ');if(parts.length===1)return n;return parts[0][0]+'. '+parts.slice(1).join(' ');}
+function rosterOf(t){var out=[],j;for(j=0;j<STATE.picks.length;j++){if(STATE.picks[j].t===t)out.push(STATE.picks[j].i);}return out;}
+function counts(t){var c={QB:0,RB:0,WR:0,TE:0};rosterOf(t).forEach(function(i){c[gp(i)[1]]++;});return c;}
+function rebuildTaken(){taken=new Set(STATE.picks.map(function(p){return p.i;}));}
+function antPicks(){var out=[],r;for(r=1;r<=ROUNDS;r++){out.push(r%2===1?(r-1)*TEAMS+STATE.ant:r*TEAMS-STATE.ant+1);}return out;}
+function toast(msg){var t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('show');},2400);}
+function roomUrl(){return location.origin+location.pathname+'?room='+ROOM;}
+function setSync(html){$('syncBox').innerHTML=html;}
+
+/* ---------- room sync over jsonblob ---------- */
+function createRoom(){
+  setSync('<span class="warn">Creating room</span>');
+  STATE.ts=Date.now();
+  return fetch(JB,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(STATE)})
+    .then(function(res){
+      var loc=res.headers.get('Location')||res.headers.get('location');
+      if(!res.ok||!loc)throw new Error('no location');
+      ROOM=loc.split('/').pop();
+      try{history.replaceState(null,'',roomUrl());}catch(e){}
+      setSync('<span class="ok">Room live</span>');
+      return ROOM;
+    });
+}
+function pushState(){
+  if(ROLE!=='cesko'||!ROOM)return;
+  STATE.ts=Date.now();dirty=true;
+  setSync('<span class="warn">Saving</span>');
+  fetch(JB+'/'+ROOM,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(STATE)})
+    .then(function(res){
+      if(!res.ok)throw new Error('bad');
+      dirty=false;
+      setSync('<span class="ok">Synced '+new Date().toLocaleTimeString().replace(/:\d\d($| )/,'$1')+'</span>');
+    })
+    .catch(function(){setSync('<span class="bad">Offline, retrying</span>');});
+}
+function save(){clearTimeout(saveTimer);saveTimer=setTimeout(pushState,350);}
+setInterval(function(){if(ROLE==='cesko'&&dirty&&ROOM)pushState();},9000);
+function pullState(){
+  if(!ROOM)return Promise.resolve(null);
+  return fetch(JB+'/'+ROOM,{headers:{'Accept':'application/json'}})
+    .then(function(res){if(!res.ok)throw new Error('bad');return res.json();})
+    .catch(function(){return null;});
+}
+function startPoll(){
+  if(pollTimer)return;
+  var tick=function(){
+    pullState().then(function(d){
+      if(d&&d.ts&&d.ts>STATE.ts){STATE=d;rebuildTaken();render();}
+      if(d){
+        var age=Math.max(0,Math.round((Date.now()-STATE.ts)/1000));
+        setSync('<span class="ok">Live</span> · '+(age>120?Math.round(age/60)+'m':age+'s')+' ago');
+      }else setSync('<span class="bad">Reconnecting</span>');
+    });
+  };
+  tick();
+  pollTimer=setInterval(tick,4000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)tick();});
+}
+
+/* ---------- views ---------- */
+function setView(v){
+  view=v;
+  ['role','setup','score','watch','best','board','teams'].forEach(function(x){$('view-'+x).classList.toggle('active',x===v);});
+  $('navScore').classList.toggle('show',ROLE==='cesko'&&v!=='role'&&v!=='setup');
+  $('navWatch').classList.toggle('show',ROLE==='ant'&&v!=='role');
+  var nav=ROLE==='cesko'?$('navScore'):$('navWatch');
+  nav.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-v')===v);});
+  render();
+}
+
+/* ---------- scorekeeper ---------- */
+function logPick(i){
+  if(STATE.picks.length>=TOTAL){toast('Draft complete');return;}
+  if(taken.has(i))return;
+  var o=STATE.picks.length+1,t=teamAt(o);
+  var pos=gp(i)[1],c=counts(t);
+  if(c[pos]>=LIMITS[pos]){toast('League rule: '+teamName(t)+' is at max '+LIMITS[pos]+' '+pos);return;}
+  STATE.picks.push({o:o,t:t,i:i});taken.add(i);
+  toast(pickLabel(o)+'  '+gp(i)[0]+'  to  '+teamName(t));
+  save();render();
+}
+function addCustom(){
+  var n=$('cName').value.trim(),pos=$('cPos').value,tm=$('cTeam').value.trim().toUpperCase()||'FA';
+  if(!n){toast('Type the player name');return;}
+  STATE.X.push([n,pos,tm]);
+  $('cName').value='';$('cTeam').value='';
+  $('customForm').classList.remove('open');
+  logPick(P.length+STATE.X.length-1);
+}
+function undo(){
+  if(!STATE.picks.length)return;
+  var last=STATE.picks.pop();
+  rebuildTaken();
+  toast('Undid '+pickLabel(last.o)+' '+gp(last.i)[0]);
+  save();render();
+}
+function showShare(force){
+  var box=$('shareBox');
+  if(!ROOM){box.innerHTML=force?'<div class="sharecard"><div class="st">No room yet</div><div class="sd">Sync is offline. Picks still log on this phone. Tap the status in the header to retry.</div></div>':'';return;}
+  box.innerHTML='<div class="sharecard"><div class="st">Anthony\u2019s link, text it to him</div>'+
+    '<div class="sharerow"><input id="shareUrl" readonly value="'+roomUrl()+'"><button id="copyBtn">Copy</button></div>'+
+    '<div class="sd">Opens in any browser, no account. He taps Anthony and the board follows live. <span id="hideShare" style="color:var(--gold);font-weight:800">Hide</span></div></div>';
+  $('copyBtn').addEventListener('click',function(){
+    var inp=$('shareUrl');inp.select();inp.setSelectionRange(0,999);
+    try{navigator.clipboard.writeText(inp.value).then(function(){toast('Link copied');});}
+    catch(e){try{document.execCommand('copy');toast('Link copied');}catch(e2){toast('Press and hold to copy');}}
+  });
+  $('hideShare').addEventListener('click',function(){box.innerHTML='';});
+}
+
+/* ---------- renders ---------- */
+function clockHtml(forWatch){
+  if(!STATE.started)return '';
+  if(STATE.picks.length>=TOTAL)
+    return '<div class="clock"><div class="kicker">Draft complete</div><div class="who">180 picks on the wall</div><div class="meta">Full board and rosters in the tabs.</div></div>';
+  var o=STATE.picks.length+1,t=teamAt(o),c=counts(t);
+  var hot=(t===STATE.ant)||(!forWatch&&t===STATE.me);
+  var note=forWatch?(t===STATE.ant?'That is you. Text Cesko now.':''):(t===STATE.me?'Your pick, Cesko.':(t===STATE.ant?'Anthony is up. Check the text thread.':'Tap the player they call.'));
+  return '<div class="clock'+(hot?' hot':'')+'">'+
+    '<div class="kicker">On the clock</div>'+
+    '<div class="who">'+teamName(t)+'</div>'+
+    '<div class="meta">'+c.QB+' QB · '+c.RB+' RB · '+c.WR+' WR · '+c.TE+' TE'+(note?' · '+note:'')+'</div>'+
+    '<div class="picknum"><div class="n">'+pickLabel(o)+'</div><div class="l">Overall '+o+'</div></div></div>';
+}
+function renderScore(){
+  $('clockBox').innerHTML=clockHtml(false);
+  var qq=q.toLowerCase(),avail=[],i;
+  for(i=0;i<P.length;i++){
+    if(taken.has(i))continue;
+    var p=P[i];
+    if(posF==='RK'&&!p[5])continue;
+    if(posF!=='ALL'&&posF!=='RK'&&p[1]!==posF)continue;
+    if(qq&&p[0].toLowerCase().indexOf(qq)<0&&p[2].toLowerCase().indexOf(qq)<0)continue;
+    avail.push(i);
+  }
+  avail.sort(function(a,b){return P[a][4]-P[b][4];});
+  var shown=avail.slice(0,showN),html='';
+  shown.forEach(function(x){
+    var p=P[x];
+    html+='<div class="prow" onclick="APP.log('+x+')">'+
+      '<div class="posbadge '+p[1]+'">'+p[1]+'</div>'+
+      '<div class="pinfo"><div class="pname">'+p[0]+(p[5]?'<span class="rk">RK</span>':'')+'</div>'+
+      '<div class="pmeta">'+p[2]+' · Bye '+p[3]+' · KJ '+RANK[x]+'</div></div>'+
+      '<div class="padp"><div class="a">'+p[4]+'</div><div class="al">ADP</div></div></div>';
+  });
+  if(!shown.length)html='<div class="prow"><div class="pinfo"><div class="pmeta">No match. Use + Not listed.</div></div></div>';
+  $('plist').innerHTML=html;
+  $('moreBtn').style.display=avail.length>showN?'block':'none';
+}
+function renderWatch(){
+  var o=STATE.picks.length+1;
+  var onAnt=STATE.started&&STATE.picks.length<TOTAL&&teamAt(o)===STATE.ant;
+  $('watchBanner').innerHTML=onAnt?'<div class="banner">YOU ARE ON THE CLOCK<div class="sub">Text Cesko your pick now</div></div>':'';
+  $('watchClock').innerHTML=STATE.started?clockHtml(true):'<div class="clock"><div class="kicker">Standby</div><div class="who">Waiting for Cesko to open the board</div><div class="meta">This screen refreshes on its own.</div></div>';
+  var ap=antPicks(),next=null,j;
+  for(j=0;j<ap.length;j++){if(ap[j]>STATE.picks.length){next=ap[j];break;}}
+  var un='';
+  if(STATE.started&&next){
+    var away=next-(STATE.picks.length+1);
+    un='Your next pick: <b>'+pickLabel(next)+'</b> (overall '+next+'), '+(away===0?'<b>right now</b>':'<b>'+away+' selection'+(away===1?'':'s')+' away</b>')+'.';
+    var after=ap[ap.indexOf(next)+1];
+    if(after)un+=' Then '+pickLabel(after)+'.';
+    var rr=counts(STATE.ant);
+    un+='  Your roster: '+rr.QB+' QB, '+rr.RB+' RB, '+rr.WR+' WR, '+rr.TE+' TE.';
+  }
+  $('upNext').innerHTML=un;
+  var feed='';
+  STATE.picks.slice(-9).reverse().forEach(function(pk){
+    var p=gp(pk.i);
+    feed+='<div class="feedrow"><div class="fo">'+pickLabel(pk.o)+'</div>'+
+      '<div class="fp">'+p[0]+' <span style="color:var(--faint)">'+p[1]+' '+p[2]+'</span></div>'+
+      '<div class="ft">'+teamName(pk.t)+'</div></div>';
+  });
+  if(!feed)feed='<div class="feedrow"><div class="fp" style="color:var(--faint);font-weight:600">Picks will stream in here.</div></div>';
+  $('feedBox').innerHTML=feed;
+}
+function renderBest(){
+  var avail=[],i;
+  for(i=0;i<P.length;i++){
+    if(taken.has(i))continue;
+    var p=P[i];
+    if(posF2==='RK'&&!p[5])continue;
+    if(posF2!=='ALL'&&posF2!=='RK'&&p[1]!==posF2)continue;
+    avail.push(i);
+  }
+  avail.sort(function(a,b){return RANK[a]-RANK[b];});
+  var shown=avail.slice(0,showN2),html='';
+  shown.forEach(function(x){
+    var p=P[x];
+    html+='<div class="prow">'+
+      '<div class="posbadge '+p[1]+'">'+p[1]+'</div>'+
+      '<div class="pinfo"><div class="pname">'+p[0]+(p[5]?'<span class="rk">RK</span>':'')+'</div>'+
+      '<div class="pmeta">'+p[2]+' · Bye '+p[3]+' · ADP '+p[4]+'</div></div>'+
+      '<div class="padp"><div class="a">'+RANK[x]+'</div><div class="al">KJ rank</div></div></div>';
+  });
+  $('bestList').innerHTML=html||'<div class="prow"><div class="pinfo"><div class="pmeta">Nothing matches.</div></div></div>';
+  $('moreBtn2').style.display=avail.length>showN2?'block':'none';
+}
+function renderBoard(){
+  var html='<table class="bd"><tr><th class="corner"></th>',t,r;
+  for(t=1;t<=TEAMS;t++){
+    var cls=t===STATE.me?' class="me"':(t===STATE.ant?' class="ant"':'');
+    html+='<th'+cls+'>'+teamName(t)+'</th>';
+  }
+  html+='</tr>';
+  var grid={};
+  STATE.picks.forEach(function(p){grid[roundOf(p.o)+'-'+p.t]=p;});
+  for(r=1;r<=ROUNDS;r++){
+    html+='<tr><td class="rl"><div class="rlabel">R'+r+'</div></td>';
+    for(t=1;t<=TEAMS;t++){
+      var pk=grid[r+'-'+t];
+      if(pk){
+        var pl=gp(pk.i);
+        var mk=pk.t===STATE.me?' mine':(pk.t===STATE.ant?' anth':'');
+        var rot=((pk.o*7)%5-2)*0.5;
+        html+='<td><div class="cell '+pl[1]+mk+'" style="transform:rotate('+rot+'deg)"><div class="cnm">'+stickName(pl[0])+'</div><div class="ctm">'+pl[1]+' · '+pl[2]+' · '+pk.o+'</div></div></td>';
+      }else{
+        var o=(r%2===1)?((r-1)*TEAMS+t):((r-1)*TEAMS+(TEAMS-t+1));
+        html+='<td><div class="cell empty"><div class="ctm">'+o+'</div></div></td>';
+      }
+    }
+    html+='</tr>';
+  }
+  html+='</table>';
+  $('boardWrap').innerHTML=html;
+}
+function renderTeams(){
+  var sel=$('teamSel'),h='',t;
+  for(t=1;t<=TEAMS;t++)h+='<option value="'+t+'">'+teamName(t)+'</option>';
+  var keep=sel.value||String(ROLE==='ant'?STATE.ant:STATE.me);
+  sel.innerHTML=h;sel.value=keep;
+  var t2=parseInt(sel.value,10),c=counts(t2);
+  $('needBar').innerHTML=['QB','RB','WR','TE'].map(function(p){
+    return '<div class="need">'+p+' <b>'+c[p]+'</b>/'+LIMITS[p]+'</div>';
+  }).join('')+'<div class="need">Picks <b>'+rosterOf(t2).length+'</b>/15</div>';
+  var html='';
+  STATE.picks.filter(function(p){return p.t===t2;}).forEach(function(pk){
+    var pl=gp(pk.i);
+    html+='<div class="prow"><div class="posbadge '+pl[1]+'">'+pl[1]+'</div>'+
+      '<div class="pinfo"><div class="pname">'+pl[0]+(pl[5]?'<span class="rk">RK</span>':'')+'</div>'+
+      '<div class="pmeta">'+pl[2]+(pl[3]?' · Bye '+pl[3]:'')+'</div></div>'+
+      '<div class="padp"><div class="a">'+pickLabel(pk.o)+'</div><div class="al">Pick</div></div></div>';
+  });
+  $('teamRoster').innerHTML=html||'<div class="prow"><div class="pinfo"><div class="pmeta">No picks yet.</div></div></div>';
+}
+function render(){
+  if(view==='score')renderScore();
+  else if(view==='watch')renderWatch();
+  else if(view==='best')renderBest();
+  else if(view==='board')renderBoard();
+  else if(view==='teams')renderTeams();
+}
+
+/* ---------- setup ---------- */
+function buildSetup(){
+  var h='',s;
+  for(s=1;s<=12;s++)h+='<option value="'+s+'"'+(s===STATE.me?' selected':'')+'>Slot '+s+'</option>';
+  $('meSlotSel').innerHTML=h;
+  var h2='';
+  for(s=1;s<=12;s++)h2+='<option value="'+s+'"'+(s===STATE.ant?' selected':'')+'>Slot '+s+'</option>';
+  $('antSlotSel').innerHTML=h2;
+  var rows='';
+  for(s=1;s<=12;s++){
+    var v=STATE.names[s]||ORDER26[s]||(s===STATE.me?'Purple Rain (Cesko)':(s===STATE.ant?'Anthony':'Team '+s));
+    rows+='<div class="teamrow"><div class="tn">'+s+'</div><input data-slot="'+s+'" value="'+v.replace(/"/g,'&quot;')+'"></div>';
+  }
+  $('teamRows').innerHTML=rows;
+  $('teamRows').querySelectorAll('input').forEach(function(inp){
+    inp.addEventListener('focus',function(){lastFocus=inp;});
+  });
+  var tray='';
+  NAMES25.forEach(function(n,ix){tray+='<button data-n="'+ix+'">'+n+'</button>';});
+  $('nameTray').innerHTML=tray;
+  $('nameTray').querySelectorAll('button').forEach(function(b){
+    b.addEventListener('click',function(){
+      if(lastFocus)lastFocus.value=NAMES25[parseInt(b.getAttribute('data-n'),10)];
+    });
+  });
+}
+function collectSetup(){
+  STATE.me=parseInt($('meSlotSel').value,10);
+  STATE.ant=parseInt($('antSlotSel').value,10);
+  if(STATE.me===STATE.ant){toast('Cesko and Anthony cannot share a slot');return false;}
+  STATE.names={};
+  $('teamRows').querySelectorAll('input').forEach(function(inp){
+    STATE.names[parseInt(inp.getAttribute('data-slot'),10)]=inp.value.trim()||('Team '+inp.getAttribute('data-slot'));
+  });
+  return true;
+}
+
+/* ---------- boot + wiring ---------- */
+var params=new URLSearchParams(location.search);
+if(params.get('room'))ROOM=params.get('room').replace(/[^A-Za-z0-9]/g,'');
+
+$('roleCesko').addEventListener('click',function(){
+  ROLE='cesko';
+  $('hdrStatus').textContent='Scorekeeper · every tap logs to the team on the clock';
+  if(ROOM){
+    pullState().then(function(d){
+      if(d){STATE=d;rebuildTaken();$('resumeBtn').style.display='block';}
+      buildSetup();setView('setup');
+    });
+  }else{buildSetup();setView('setup');}
+});
+$('roleAnt').addEventListener('click',function(){
+  ROLE='ant';
+  $('hdrStatus').textContent='Watching live · text Cesko your picks';
+  if(!ROOM){$('joinRow').classList.add('open');$('joinInput').focus();return;}
+  setView('watch');startPoll();
+});
+$('joinBtn').addEventListener('click',function(){
+  var v=$('joinInput').value.trim();
+  var m=v.match(/room=([A-Za-z0-9]+)/);
+  ROOM=m?m[1]:v.replace(/[^A-Za-z0-9]/g,'');
+  if(!ROOM){toast('Paste the full link from Cesko');return;}
+  try{history.replaceState(null,'',roomUrl());}catch(e){}
+  ROLE='ant';setView('watch');startPoll();
+});
+$('startBtn').addEventListener('click',function(){
+  if(!collectSetup())return;
+  STATE.started=true;
+  var go=function(){setView('score');showShare(true);toast('Board open. Log every pick as it happens.');};
+  if(ROOM){pushState();go();showShare(false);showShare(true);}
+  else{
+    createRoom().then(function(){go();}).catch(function(){
+      setSync('<span class="bad">No sync, local only</span>');
+      go();
+    });
+  }
+});
+$('resumeBtn').addEventListener('click',function(){
+  pullState().then(function(d){
+    if(d){STATE=d;rebuildTaken();}
+    setView('score');showShare(true);toast('Resumed at pick '+(STATE.picks.length+1));
+  });
+});
+$('syncBox').addEventListener('click',function(){
+  if(ROLE==='cesko'){
+    if(!ROOM){createRoom().then(function(){pushState();showShare(true);toast('Sync is back');}).catch(function(){toast('Still offline, picks are safe on this phone');});}
+    else pushState();
+  }
+});
+$('undoBtn').addEventListener('click',undo);
+$('customTog').addEventListener('click',function(){$('customForm').classList.toggle('open');});
+$('cAdd').addEventListener('click',addCustom);
+$('inviteBtn').addEventListener('click',function(){showShare(true);window.scrollTo(0,0);});
+$('editTeamsBtn').addEventListener('click',function(){buildSetup();$('resumeBtn').style.display='block';setView('setup');});
+$('search').addEventListener('input',function(e){q=e.target.value;showN=30;renderScore();});
+$('posFilters').querySelectorAll('button').forEach(function(b){
+  b.addEventListener('click',function(){
+    $('posFilters').querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');posF=b.getAttribute('data-p');showN=30;renderScore();
+  });
+});
+$('posFilters2').querySelectorAll('button').forEach(function(b){
+  b.addEventListener('click',function(){
+    $('posFilters2').querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');posF2=b.getAttribute('data-p');showN2=30;renderBest();
+  });
+});
+$('moreBtn').addEventListener('click',function(){showN+=30;renderScore();});
+$('moreBtn2').addEventListener('click',function(){showN2+=30;renderBest();});
+$('teamSel').addEventListener('change',renderTeams);
+document.querySelectorAll('#navScore button,#navWatch button').forEach(function(b){
+  b.addEventListener('click',function(){setView(b.getAttribute('data-v'));});
+});
+window.APP={log:logPick};
+})();
+</script>
+</body>
+</html>
