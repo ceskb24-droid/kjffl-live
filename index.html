@@ -168,7 +168,7 @@ nav button.on{color:#fff;background:var(--pan2, var(--panel2))}
     <div class="card"><h2>Who is holding this phone?</h2>
       <button class="rolebtn cesko" id="roleCesko"><div class="rt">Cesko, scorekeeper</div><div class="rd">At the draft. Logs every pick. The only device that writes to the board.</div></button>
       <button class="rolebtn ant" id="roleAnt"><div class="rt">Anthony, slot 8</div><div class="rd">Watching from anywhere, no account needed. Board refreshes live. Text Cesko your picks.</div></button>
-      <button class="rolebtn ant" id="roleAnt2"><div class="rt">Anthony Khader, slot 4</div><div class="rd">Same deal. Live board, your roster, text Cesko when you are up.</div></button>
+      <button class="rolebtn ant" id="roleAnt2"><div class="rt">Anthony Khader, slot 4</div><div class="rd">Live board and your roster. Text the commissioner when you are up.</div></button>
       <div class="joinrow" id="joinRow" style="display:none"><input id="joinInput"><button id="joinBtn">Join</button></div>
       <div class="finenote">Anthony's link is view only and opens straight to the feed. The scorekeeper link carries the sync key, keep that one to yourself.</div>
     </div>
@@ -455,7 +455,7 @@ function clockHtml(forWatch){
   var o=STATE.picks.length+1,t=teamAt(o),c=counts(t);
   var W=ws();
   var hot=forWatch?(t===W):(isProxy(t)||t===STATE.me);
-  var note=forWatch?(t===W?'That is you. Text Cesko now.':''):(t===STATE.me?'Your pick, Cesko.':(isProxy(t)?teamName(t)+' is up. Check the text thread.':'Tap the player they call.'));
+  var note=forWatch?(t===W?(W===STATE.ant2?'That is you. Text the commissioner now.':'That is you. Text Cesko now.'):''):(t===STATE.me?'Your pick, Cesko.':(t===STATE.ant?'Anthony is up. Check the text thread.':(t===STATE.ant2?teamName(t)+' is up. Commissioner relays his pick.':'Tap the player they call.')));
   return '<div class="clock'+(hot?' hot':'')+'">'+
     '<div class="kicker">On the clock</div>'+
     '<div class="who">'+teamName(t)+'</div>'+
@@ -491,7 +491,7 @@ function renderWatch(){
   var o=STATE.picks.length+1;
   var W=ws();
   var onAnt=STATE.started&&STATE.picks.length<TOTAL&&teamAt(o)===W;
-  $('watchBanner').innerHTML=onAnt?'<div class="banner">YOU ARE ON THE CLOCK<div class="sub">Text Cesko your pick now</div></div>':'';
+  $('watchBanner').innerHTML=onAnt?'<div class="banner">YOU ARE ON THE CLOCK<div class="sub">'+(W===STATE.ant2?'Text the commissioner your pick now':'Text Cesko your pick now')+'</div></div>':'';
   $('watchClock').innerHTML=STATE.started?clockHtml(true):'<div class="clock"><div class="kicker">Standby</div><div class="who">Waiting for Cesko to open the board</div><div class="meta">This screen refreshes on its own.</div></div>';
   var ap=slotPicks(W),next=null,j;
   for(j=0;j<ap.length;j++){if(ap[j]>STATE.picks.length){next=ap[j];break;}}
