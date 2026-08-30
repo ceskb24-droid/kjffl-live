@@ -168,6 +168,7 @@ nav button.on{color:#fff;background:var(--pan2, var(--panel2))}
     <div class="card"><h2>Who is holding this phone?</h2>
       <button class="rolebtn cesko" id="roleCesko"><div class="rt">Cesko, scorekeeper</div><div class="rd">At the draft. Logs every pick. The only device that writes to the board.</div></button>
       <button class="rolebtn ant" id="roleAnt"><div class="rt">Anthony, slot 8</div><div class="rd">Watching from anywhere, no account needed. Board refreshes live. Text Cesko your picks.</div></button>
+      <button class="rolebtn ant" id="roleAnt2"><div class="rt">Anthony Khader, slot 4</div><div class="rd">Same deal. Live board, your roster, text Cesko when you are up.</div></button>
       <div class="joinrow" id="joinRow" style="display:none"><input id="joinInput"><button id="joinBtn">Join</button></div>
       <div class="finenote">Anthony's link is view only and opens straight to the feed. The scorekeeper link carries the sync key, keep that one to yourself.</div>
     </div>
@@ -178,6 +179,7 @@ nav button.on{color:#fff;background:var(--pan2, var(--panel2))}
     <div class="card"><h2>Slots</h2>
       <div class="setrow"><label>Purple Rain (you)</label><select id="meSlotSel" class="slotsel"></select></div>
       <div class="setrow"><label>Anthony</label><select id="antSlotSel" class="slotsel"></select></div>
+      <div class="setrow"><label>Anthony Khader</label><select id="antSlotSel2" class="slotsel"></select></div>
     </div>
     <div class="card"><h2>Draft order, team names</h2>
       <div id="teamRows"></div>
@@ -272,9 +274,9 @@ var RAW='https://raw.githubusercontent.com/'+GH_OWNER+'/'+GH_REPO+'/'+GH_BRANCH+
 var TOKEN=null,SHA=null;
 var LIMITS={QB:3,RB:8,WR:8,TE:3};
 var NAMES25=['2 QBs 1 Kupp','NO LOVE IN MA HOME','K3K0 J0N3$','Maserati 18','LIEING HURT$','WELCOME to the NABERHOOD','I WoULD dO HenRY thING fOR LOve','Brocked And Loaded','Get Schwifty','Django Achaned','Have your highest Week'];
-var ORDER26={1:'Ralph',2:'Spills',3:'Phil',4:'Tony',5:'Erich',6:'Purple Rain (Cesko)',7:'Hector',8:'Anthony',9:'Conner',10:'Mick',11:'Erik',12:'Twista'};
+var ORDER26={1:'Ralph',2:'Spills',3:'Phil',4:'Tony (Khader)',5:'Erich',6:'Purple Rain (Cesko)',7:'Hector',8:'Anthony',9:'Conner',10:'Mick',11:'Erik',12:'Twista'};
 var ROLE=null;
-var STATE={v:2,started:false,me:6,ant:8,names:{},picks:[],X:[],ts:0};
+var STATE={v:2,started:false,me:6,ant:8,ant2:4,names:{},picks:[],X:[],ts:0};
 var taken=new Set(),view='role',showN=30,posF='ALL',q='',showN2=30,posF2='ALL',lastFocus=null,dirty=false,saveTimer=null,pollTimer=null;
 
 function $(id){return document.getElementById(id);}
@@ -289,8 +291,11 @@ function teamName(t){return STATE.names[t]||ORDER26[t]||('Team '+t);}
 function stickName(n){var parts=n.split(' ');if(parts.length===1)return n;return parts[0][0]+'. '+parts.slice(1).join(' ');}
 function rosterOf(t){var out=[],j;for(j=0;j<STATE.picks.length;j++){if(STATE.picks[j].t===t)out.push(STATE.picks[j].i);}return out;}
 function counts(t){var c={QB:0,RB:0,WR:0,TE:0};rosterOf(t).forEach(function(i){c[gp(i)[1]]++;});return c;}
-function rebuildTaken(){taken=new Set(STATE.picks.map(function(p){return p.i;}));}
-function antPicks(){var out=[],r;for(r=1;r<=ROUNDS;r++){out.push(r%2===1?(r-1)*TEAMS+STATE.ant:r*TEAMS-STATE.ant+1);}return out;}
+function rebuildTaken(){if(!STATE.ant2)STATE.ant2=4;taken=new Set(STATE.picks.map(function(p){return p.i;}));}
+function isProxy(t){return t===STATE.ant||t===STATE.ant2;}
+function slotPicks(sl){var out=[],r;for(r=1;r<=ROUNDS;r++){out.push(r%2===1?(r-1)*TEAMS+sl:r*TEAMS-sl+1);}return out;}
+var WFIX=null;
+function ws(){if(WFIX==='b')return STATE.ant2||4;if(typeof WFIX==='number')return WFIX;return STATE.ant;}
 function toast(msg){var t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('show');},2400);}
 function setSync(html){$('syncBox').innerHTML=html;}
 
@@ -420,10 +425,14 @@ function showShare(force){
   if(!TOKEN){if(force)showToken();else box.innerHTML='';return;}
   if(!force){box.innerHTML='';return;}
   var link=location.origin+location.pathname+'?w=1';
+  var link2=location.origin+location.pathname+'?w=4';
   var mylink=location.origin+location.pathname+'?s=4#k='+TOKEN;
   box.innerHTML='<div class="sharecard"><div class="st">Anthony\u2019s link, text it to him</div>'+
     '<div class="sharerow"><input id="shareUrl" readonly value="'+link+'"><button id="copyBtn">Copy</button></div>'+
     '<div class="sd">View only. Opens straight into the live feed, no account, no key.</div>'+
+    '<div class="st" style="margin-top:12px">Anthony Khader\u2019s link (slot 4)</div>'+
+    '<div class="sharerow"><input id="shareUrl2" readonly value="'+link2+'"><button id="copyBtn3">Copy</button></div>'+
+    '<div class="sd">Same thing, keyed to his seat.</div>'+
     '<div class="st" style="margin-top:12px">Your private scorekeeper link</div>'+
     '<div class="sharerow"><input id="myUrl" readonly value="'+mylink+'"><button id="copyBtn2">Copy</button></div>'+
     '<div class="sd">Carries your sync key after the #, which never leaves this phone. Save it in Notes, always open the board from it, never text this one. <span id="hideShare" style="color:var(--gold);font-weight:800">Hide</span></div></div>';
@@ -434,7 +443,7 @@ function showShare(force){
       catch(e){try{document.execCommand('copy');toast('Copied');}catch(e2){toast('Press and hold to copy');}}
     });
   }
-  wireCopy('copyBtn','shareUrl');wireCopy('copyBtn2','myUrl');
+  wireCopy('copyBtn','shareUrl');wireCopy('copyBtn2','myUrl');wireCopy('copyBtn3','shareUrl2');
   $('hideShare').addEventListener('click',function(){box.innerHTML='';});
 }
 
@@ -444,8 +453,9 @@ function clockHtml(forWatch){
   if(STATE.picks.length>=TOTAL)
     return '<div class="clock"><div class="kicker">Draft complete</div><div class="who">180 picks on the wall</div><div class="meta">Full board and rosters in the tabs.</div></div>';
   var o=STATE.picks.length+1,t=teamAt(o),c=counts(t);
-  var hot=(t===STATE.ant)||(!forWatch&&t===STATE.me);
-  var note=forWatch?(t===STATE.ant?'That is you. Text Cesko now.':''):(t===STATE.me?'Your pick, Cesko.':(t===STATE.ant?'Anthony is up. Check the text thread.':'Tap the player they call.'));
+  var W=ws();
+  var hot=forWatch?(t===W):(isProxy(t)||t===STATE.me);
+  var note=forWatch?(t===W?'That is you. Text Cesko now.':''):(t===STATE.me?'Your pick, Cesko.':(isProxy(t)?teamName(t)+' is up. Check the text thread.':'Tap the player they call.'));
   return '<div class="clock'+(hot?' hot':'')+'">'+
     '<div class="kicker">On the clock</div>'+
     '<div class="who">'+teamName(t)+'</div>'+
@@ -479,10 +489,11 @@ function renderScore(){
 }
 function renderWatch(){
   var o=STATE.picks.length+1;
-  var onAnt=STATE.started&&STATE.picks.length<TOTAL&&teamAt(o)===STATE.ant;
+  var W=ws();
+  var onAnt=STATE.started&&STATE.picks.length<TOTAL&&teamAt(o)===W;
   $('watchBanner').innerHTML=onAnt?'<div class="banner">YOU ARE ON THE CLOCK<div class="sub">Text Cesko your pick now</div></div>':'';
   $('watchClock').innerHTML=STATE.started?clockHtml(true):'<div class="clock"><div class="kicker">Standby</div><div class="who">Waiting for Cesko to open the board</div><div class="meta">This screen refreshes on its own.</div></div>';
-  var ap=antPicks(),next=null,j;
+  var ap=slotPicks(W),next=null,j;
   for(j=0;j<ap.length;j++){if(ap[j]>STATE.picks.length){next=ap[j];break;}}
   var un='';
   if(STATE.started&&next){
@@ -490,7 +501,7 @@ function renderWatch(){
     un='Your next pick: <b>'+pickLabel(next)+'</b> (overall '+next+'), '+(away===0?'<b>right now</b>':'<b>'+away+' selection'+(away===1?'':'s')+' away</b>')+'.';
     var after=ap[ap.indexOf(next)+1];
     if(after)un+=' Then '+pickLabel(after)+'.';
-    var rr=counts(STATE.ant);
+    var rr=counts(W);
     un+='  Your roster: '+rr.QB+' QB, '+rr.RB+' RB, '+rr.WR+' WR, '+rr.TE+' TE.';
   }
   $('upNext').innerHTML=un;
@@ -529,7 +540,7 @@ function renderBest(){
 function renderBoard(){
   var html='<table class="bd"><tr><th class="corner"></th>',t,r;
   for(t=1;t<=TEAMS;t++){
-    var cls=t===STATE.me?' class="me"':(t===STATE.ant?' class="ant"':'');
+    var cls=t===STATE.me?' class="me"':(isProxy(t)?' class="ant"':'');
     html+='<th'+cls+'>'+teamName(t)+'</th>';
   }
   html+='</tr>';
@@ -541,7 +552,7 @@ function renderBoard(){
       var pk=grid[r+'-'+t];
       if(pk){
         var pl=gp(pk.i);
-        var mk=pk.t===STATE.me?' mine':(pk.t===STATE.ant?' anth':'');
+        var mk=pk.t===STATE.me?' mine':(isProxy(pk.t)?' anth':'');
         var rot=((pk.o*7)%5-2)*0.5;
         html+='<td><div class="cell '+pl[1]+mk+'" style="transform:rotate('+rot+'deg)"><div class="cnm">'+stickName(pl[0])+'</div><div class="ctm">'+pl[1]+' · '+pl[2]+' · '+pk.o+'</div></div></td>';
       }else{
@@ -557,7 +568,7 @@ function renderBoard(){
 function renderTeams(){
   var sel=$('teamSel'),h='',t;
   for(t=1;t<=TEAMS;t++)h+='<option value="'+t+'">'+teamName(t)+'</option>';
-  var keep=sel.value||String(ROLE==='ant'?STATE.ant:STATE.me);
+  var keep=sel.value||String(ROLE==='ant'?ws():STATE.me);
   sel.innerHTML=h;sel.value=keep;
   var t2=parseInt(sel.value,10),c=counts(t2);
   $('needBar').innerHTML=['QB','RB','WR','TE'].map(function(p){
@@ -589,6 +600,9 @@ function buildSetup(){
   var h2='';
   for(s=1;s<=12;s++)h2+='<option value="'+s+'"'+(s===STATE.ant?' selected':'')+'>Slot '+s+'</option>';
   $('antSlotSel').innerHTML=h2;
+  var h3='';
+  for(s=1;s<=12;s++)h3+='<option value="'+s+'"'+(s===(STATE.ant2||4)?' selected':'')+'>Slot '+s+'</option>';
+  $('antSlotSel2').innerHTML=h3;
   var rows='';
   for(s=1;s<=12;s++){
     var v=STATE.names[s]||ORDER26[s]||(s===STATE.me?'Purple Rain (Cesko)':(s===STATE.ant?'Anthony':'Team '+s));
@@ -610,7 +624,8 @@ function buildSetup(){
 function collectSetup(){
   STATE.me=parseInt($('meSlotSel').value,10);
   STATE.ant=parseInt($('antSlotSel').value,10);
-  if(STATE.me===STATE.ant){toast('Cesko and Anthony cannot share a slot');return false;}
+  STATE.ant2=parseInt($('antSlotSel2').value,10);
+  if(STATE.me===STATE.ant||STATE.me===STATE.ant2||STATE.ant===STATE.ant2){toast('Three different slots needed');return false;}
   STATE.names={};
   $('teamRows').querySelectorAll('input').forEach(function(inp){
     STATE.names[parseInt(inp.getAttribute('data-slot'),10)]=inp.value.trim()||('Team '+inp.getAttribute('data-slot'));
@@ -631,17 +646,19 @@ function enterCesko(){
     buildSetup();setView('setup');
   });
 }
-function enterWatch(){
-  ROLE='ant';
+function enterWatch(k){
+  ROLE='ant';WFIX=(k===undefined?null:k);
   $('hdrStatus').textContent='Watching live \u00b7 text Cesko your picks';
   setView('watch');startPoll();
 }
 var HK=(location.hash.match(/k=([A-Za-z0-9_]+)/)||[])[1]||null;
 if(HK)saveTokenVal(HK);else loadToken();
 $('roleCesko').addEventListener('click',enterCesko);
-$('roleAnt').addEventListener('click',enterWatch);
-$('joinBtn').addEventListener('click',enterWatch);
-if(new URLSearchParams(location.search).get('w'))enterWatch();
+$('roleAnt').addEventListener('click',function(){enterWatch(null);});
+$('roleAnt2').addEventListener('click',function(){enterWatch('b');});
+$('joinBtn').addEventListener('click',function(){enterWatch(null);});
+var WP=new URLSearchParams(location.search).get('w');
+if(WP){var wn=parseInt(WP,10);enterWatch(wn>=2&&wn<=12?wn:null);}
 else if(HK)enterCesko();
 $('startBtn').addEventListener('click',function(){
   if(!collectSetup())return;
