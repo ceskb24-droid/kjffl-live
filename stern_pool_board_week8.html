@@ -1,0 +1,88 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stern NFL Betting Pool, Week 8</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1420;--card:#1a2132;--card2:#222b40;--txt:#f2f4f8;--mut:#9aa3b5;--g:#22c55e;--r:#ef4444;--y:#f59e0b;--b:#3b82f6}
+body{margin:0;font:16px/1.4 Inter,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:16px;max-width:900px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin:22px 0 8px}
+.sub{color:var(--mut);font-size:13px;margin-bottom:14px}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.tot{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px}
+.tot div{background:var(--card);border-radius:10px;padding:10px 14px}.tot b{display:block;font-size:22px;font-family:"JetBrains Mono",monospace}.tot span{color:var(--mut);font-size:12px}
+.ticker{background:var(--card);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--mut);white-space:nowrap;overflow:hidden;margin-bottom:6px}
+.ticker .in{display:inline-block;padding-left:100%;animation:sc 40s linear infinite}@keyframes sc{to{transform:translateX(-100%)}}
+.row{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:8px 1fr auto;gap:12px;align-items:center}
+.bar{width:8px;height:48px;border-radius:4px;background:var(--mut)}
+.win .bar{background:var(--g)}.loss .bar{background:var(--r)}.push .bar{background:var(--y)}.live .bar{background:var(--b);animation:p 1.2s infinite}@keyframes p{50%{opacity:.4}}
+.lbl{font-weight:600}.det{color:var(--mut);font-size:13px}.ko{color:var(--mut);font-size:12px}
+.st{font-weight:700;text-align:right;font-family:"JetBrains Mono",monospace;font-size:14px}.win .st{color:var(--g)}.loss .st{color:var(--r)}.push .st{color:var(--y)}.live .st{color:var(--b)}
+.meter{height:6px;border-radius:3px;background:var(--card2);margin-top:6px;position:relative;overflow:hidden}.meter i{position:absolute;top:0;bottom:0;left:50%;width:2px;background:var(--mut)}.meter b{position:absolute;top:0;bottom:0;background:var(--b)}
+.win .meter b{background:var(--g)}.loss .meter b{background:var(--r)}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:7px 8px;border-bottom:1px solid #2a3350;text-align:left}th{color:var(--mut);font-weight:600;font-size:12px}td.n{font-family:"JetBrains Mono",monospace;text-align:right}th.n{text-align:right}
+.pos{color:var(--g)}.neg{color:var(--r)}
+.note{color:var(--mut);font-size:12px;margin-top:16px;line-height:1.5}
+.flag{display:inline-block;font-size:11px;color:var(--y);border:1px solid var(--y);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:middle}
+</style></head><body>
+<h1>Stern NFL Betting Pool, Week 8</h1>
+<div class="sub">10 picks, $100 each. Placed at DraftKings Sun 1 Nov 2026, 10:49 AM ET. Scores refresh every 60 seconds from ESPN. <span id="upd">connecting to scores</span></div>
+<div class="tot">
+<div><span>Record</span><b id="rec">0-0</b><span id="recs">10 pending</span></div>
+<div><span>Week P/L</span><b id="pnl">$0</b><span>wins pay at the listed price</span></div>
+<div><span>Bankroll</span><b id="bank">$0</b><span id="bank0"></span></div>
+<div><span>Season</span><b id="srec">0-0</b><span id="spl">$0 all weeks</span></div>
+<div><span>Sweat meter</span><b id="live">0</b><span>picks in a live game</span></div>
+</div>
+<div class="ticker"><div class="in" id="tick">Waiting for the ESPN score feed</div></div>
+<h2>Spreads and moneyline</h2><div id="sides"></div>
+<h2>Totals</h2><div id="totals"></div>
+<h2>Player props</h2><div id="props"></div>
+<h2>Season record</h2><div id="season"></div>
+<div class="note">Green = winning/won, red = losing/lost, yellow = push, blue = in progress, grey = not started. The meter shows how far each pick is from its number. Live status uses the current score and is not final until the game ends. Props grade from the ESPN box score and can lag the broadcast. Board updated only by Cesko. Survivor entries are tracked separately.<br><br>Week 7 graded 8-2, +$517.14 (losses: BAL +3 and KC +3), checked against ESPN final scores. Two Week 8 tickets (Higgins 71.5, ATL/TB under at -118) were placed outside their written windows and are marked with a flag for the Tuesday post-mortem.</div>
+<script>
+const BANK0=3407.85; /* bank after Week 7 per nflverse grading: 2890.71 + 517.14 */
+const STAKE=100;
+const PICKS=[
+{"game":"ARI_DAL","kind":"spread","label":"ARI +7","price":-108,"away":"ARI","home":"DAL","ko":"Sun 1:00 PM ET"},
+{"game":"IND_JAX","kind":"spread","label":"IND +10","price":-108,"away":"IND","home":"JAX","ko":"Sun 1:00 PM ET"},
+{"game":"MIN_DET","kind":"spread","label":"MIN +3","price":100,"away":"MIN","home":"DET","ko":"Sun 1:00 PM ET"},
+{"game":"CLE_PIT","kind":"spread","label":"CLE +3.5","price":-110,"away":"CLE","home":"PIT","ko":"Sun 1:00 PM ET"},
+{"game":"KC_DEN","kind":"spread","label":"KC -1.5","price":100,"away":"KC","home":"DEN","ko":"Sun 4:25 PM ET"},
+{"game":"PHI_WAS","kind":"spread","label":"WAS -6","price":-112,"away":"PHI","home":"WAS","ko":"Sun 8:20 PM ET"},
+{"game":"LAC_LAR","kind":"total","label":"LAC/LAR UNDER 45.5","price":-108,"away":"LAC","home":"LAR","ko":"Sun 4:05 PM ET"},
+{"game":"ATL_TB","kind":"total","label":"ATL/TB UNDER 43.5","price":-118,"away":"ATL","home":"TB","ko":"Sun 1:00 PM ET","flag":"price past -115 limit"},
+{"game":"CHI_SEA","kind":"total","label":"CHI/SEA UNDER 46.5","price":-110,"away":"CHI","home":"SEA","ko":"Mon 8:15 PM ET"},
+{"game":"TEN_CIN","kind":"prop","label":"Tee Higgins OVER 71.5 rec yds","player":"Tee Higgins","stat":"receiving:YDS","side":"OVER","line":71.5,"price":-110,"away":"TEN","home":"CIN","ko":"Sun 1:00 PM ET","flag":"number past 70.5 limit"}
+];
+const SEASON=[
+{"week":1,"w":4,"l":6,"p":0,"pnl":-236.00,"note":"Bank $3,000 to $2,764"},
+{"week":2,"w":6,"l":4,"p":0,"pnl":132.51,"note":"Bank $2,764 to $2,896.51"},
+{"week":3,"w":6,"l":4,"p":0,"pnl":140.39,"note":"Bank $2,896.51 to $3,036.90"},
+{"week":4,"w":6,"l":4,"p":0,"pnl":140.32,"note":"Bank $3,036.90 to $3,177.22"},
+{"week":5,"w":6,"l":4,"p":0,"pnl":147.49,"note":"Bank $3,177.22 to $3,324.71"},
+{"week":6,"w":3,"l":7,"p":0,"pnl":-434.00,"note":"Bank $3,324.71 to $2,890.71"},
+{"week":7,"w":8,"l":2,"p":0,"pnl":517.14,"note":"Bank $2,890.71 to $3,407.85"}
+];
+const SB='https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard';
+const SUM='https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=';
+const PS={};
+const fix=x=>({LA:'LAR',WSH:'WAS'}[x]||x);
+const fmt$=v=>(v<0?'-':'+')+'$'+Math.abs(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+const fmtB=v=>'$'+v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+function pay(p){return p>0?p/100:100/-p}
+function parse(pk){if(pk.kind==='prop')return{type:'prop'};const ml=pk.label.match(/^(\w+)\sML$/);if(ml)return{type:'spread',team:ml[1],line:0};const m=pk.label.match(/^(\w+)\s([+-][\d.]+)$/);if(m)return{type:'spread',team:m[1],line:+m[2]};const t=pk.label.match(/(OVER|UNDER)\s([\d.]+)/);return{type:'total',side:t[1],line:+t[2]};}
+async function propVal(pk,g){if(!g||!g.id)return null;if(!PS[g.id]||Date.now()-PS[g.id].t>55000){try{const r=await fetch(SUM+g.id);PS[g.id]={t:Date.now(),j:await r.json()};}catch(e){return null}}
+const j=PS[g.id].j;const[grp,lab]=pk.stat.split(':');try{for(const team of j.boxscore.players){for(const s of team.statistics){if(s.name!==grp)continue;const i=s.labels.indexOf(lab);for(const a of s.athletes){if(a.athlete.displayName===pk.player)return parseFloat(String(a.stats[i]).split('/').pop())||0;}}}}catch(e){}return 0;}
+async function grade(pk,g){if(!g)return['','not started',null];const s=g.status,hs=g.home.score,as=g.away.score,done=s.completed,started=s.state!=='pre';if(!started)return['',g.detail||'not started',null];const p=parse(pk);let v,txt;
+if(p.type==='prop'){const cur=await propVal(pk,g);if(cur===null)return['live','box score pending',null];v=pk.side==='OVER'?cur-pk.line:pk.line-cur;txt=(done?'FINAL ':'')+pk.player+' '+cur+' yds'+(done?'':' ('+g.detail+')');}
+else{if(p.type==='spread'){const my=p.team===g.home.abbr?hs-as:as-hs;v=my+p.line;}else{const tot=hs+as;v=p.side==='OVER'?tot-p.line:p.line-tot;}txt=(done?'FINAL ':'')+g.away.abbr+' '+as+' - '+g.home.abbr+' '+hs+(done?'':' ('+g.detail+')');}
+const r=v>0?'win':v<0?'loss':'push';return[done?r:'live '+r,txt,v];}
+function row(pk,st,txt,v){const cls=st.startsWith('live')?'live':st;const d=document.createElement('div');d.className='row '+(cls||'');const scale=pk.kind==='prop'?30:10;let meter='';if(v!==null&&v!==undefined){const pct=Math.max(-1,Math.min(1,v/scale));const left=pct>=0?50:50+pct*50,w=Math.abs(pct)*50;meter='<div class="meter"><i></i><b style="left:'+left+'%;width:'+w+'%"></b></div>';}
+d.innerHTML='<div class="bar"></div><div><div class="lbl">'+pk.label+' <span class="mono">('+(pk.price>0?'+':'')+pk.price+')</span>'+(pk.flag?'<span class="flag">'+pk.flag+'</span>':'')+'</div><div class="det">'+pk.away+' @ '+pk.home+' &middot; '+txt+'</div><div class="ko">'+pk.ko+(v!==null&&v!==undefined?' &middot; margin '+(v>0?'+':'')+(Math.round(v*10)/10):'')+'</div>'+meter+'</div><div class="st">'+(st?st.replace('live ','').toUpperCase()+(st.startsWith('live')?'<br>(live)':''):'')+'</div>';return d;}
+async function tick(){let games={};let tk=[];try{const r=await fetch(SB);const j=await r.json();for(const e of j.events){const c=e.competitions[0];const h=c.competitors.find(x=>x.homeAway==='home'),a=c.competitors.find(x=>x.homeAway==='away');const A=fix(a.team.abbreviation),H=fix(h.team.abbreviation);games[A+'_'+H]={id:e.id,home:{abbr:H,score:+h.score},away:{abbr:A,score:+a.score},status:{completed:c.status.type.completed,state:c.status.type.state},detail:c.status.type.shortDetail};tk.push(A+' '+a.score+' @ '+H+' '+h.score+' ('+c.status.type.shortDetail+')');}document.getElementById('upd').textContent='Last refresh '+new Date().toLocaleTimeString();document.getElementById('tick').textContent=tk.join('   •   ');}catch(e){document.getElementById('upd').textContent='Score feed unavailable, retrying';}
+let w=0,l=0,pu=0,pend=0,live=0,pnl=0;for(const id of['sides','totals','props'])document.getElementById(id).innerHTML='';
+for(const pk of PICKS){const g=games[pk.away+'_'+pk.home];const[st,txt,v]=await grade(pk,g);const fin=['win','loss','push'].includes(st);if(fin){if(st==='win'){w++;pnl+=STAKE*pay(pk.price)}else if(st==='loss'){l++;pnl-=STAKE}else pu++;}else{pend++;if(st.startsWith('live'))live++;}
+document.getElementById(pk.kind==='prop'?'props':pk.kind==='total'?'totals':'sides').appendChild(row(pk,st,txt,v));}
+document.getElementById('rec').textContent=w+'-'+l+(pu?'-'+pu:'');document.getElementById('recs').textContent=pend+' pending';document.getElementById('pnl').textContent=fmt$(pnl);document.getElementById('pnl').className=pnl<0?'neg':pnl>0?'pos':'';document.getElementById('bank').textContent=fmtB(BANK0+pnl);document.getElementById('bank0').textContent='start of week '+fmtB(BANK0);document.getElementById('live').textContent=live;
+let sw=w,sl=l,sp=pu,spl=pnl;for(const s of SEASON){sw+=s.w;sl+=s.l;sp+=s.p;spl+=s.pnl;}document.getElementById('srec').textContent=sw+'-'+sl+(sp?'-'+sp:'');document.getElementById('spl').textContent=fmt$(spl)+' all weeks';
+let h='<table><tr><th>Week</th><th class="n">Record</th><th class="n">P/L</th><th>Note</th></tr>';for(const s of SEASON)h+='<tr><td>Week '+s.week+'</td><td class="n">'+s.w+'-'+s.l+(s.p?'-'+s.p:'')+'</td><td class="n '+(s.pnl<0?'neg':'pos')+'">'+fmt$(s.pnl)+'</td><td class="det">'+s.note+'</td></tr>';h+='<tr><td>Week 8</td><td class="n">'+w+'-'+l+(pu?'-'+pu:'')+'</td><td class="n '+(pnl<0?'neg':pnl>0?'pos':'')+'">'+fmt$(pnl)+'</td><td class="det">'+pend+' pending</td></tr></table>';document.getElementById('season').innerHTML=h;}
+tick();setInterval(tick,60000);
+</script></body></html>
